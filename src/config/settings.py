@@ -50,7 +50,7 @@ def load_settings() -> Settings:
         request_delay_ms=_get_int("REQUEST_DELAY_MS", 300),
         resume_path=Path(os.getenv("RESUME_PATH", "resumes/resume.md")),
         portfolio_path=Path(os.getenv("PORTFOLIO_PATH", "portfolios/portfolio.md")),
-        notification_channel=os.getenv("NOTIFICATION_CHANNEL", "markdown"),
+        notification_channel=os.getenv("NOTIFICATION_CHANNELS") or os.getenv("NOTIFICATION_CHANNEL", "markdown"),
         webhook_url=os.getenv("WEBHOOK_URL") or None,
         email_host=os.getenv("EMAIL_HOST") or None,
         email_port=_get_int("EMAIL_PORT", 587),

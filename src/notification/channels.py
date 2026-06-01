@@ -47,7 +47,7 @@ class WebhookChannel(NotificationChannel):
 
     def send(self, content: str) -> str:
         if not self.url:
-            raise ValueError("WEBHOOK_URL is required when NOTIFICATION_CHANNEL=webhook")
+            raise ValueError("WEBHOOK_URL is required when NOTIFICATION_CHANNELS includes webhook")
 
         payload = json.dumps({"text": content}, ensure_ascii=False).encode("utf-8")
         request = Request(
@@ -75,9 +75,9 @@ class TelegramChannel(NotificationChannel):
 
     def send(self, content: str) -> str:
         if not self.bot_token:
-            raise ValueError("TELEGRAM_BOT_TOKEN is required when NOTIFICATION_CHANNEL=telegram")
+            raise ValueError("TELEGRAM_BOT_TOKEN is required when NOTIFICATION_CHANNELS includes telegram")
         if not self.chat_id:
-            raise ValueError("TELEGRAM_CHAT_ID is required when NOTIFICATION_CHANNEL=telegram")
+            raise ValueError("TELEGRAM_CHAT_ID is required when NOTIFICATION_CHANNELS includes telegram")
 
         payload = json.dumps({"chat_id": self.chat_id, "text": content}, ensure_ascii=False).encode("utf-8")
         request = Request(
@@ -104,7 +104,7 @@ class DiscordChannel(NotificationChannel):
 
     def send(self, content: str) -> str:
         if not self.webhook_url:
-            raise ValueError("DISCORD_WEBHOOK_URL is required when NOTIFICATION_CHANNEL=discord")
+            raise ValueError("DISCORD_WEBHOOK_URL is required when NOTIFICATION_CHANNELS includes discord")
 
         payload = json.dumps({"content": content}, ensure_ascii=False).encode("utf-8")
         request = Request(
@@ -150,11 +150,11 @@ class EmailChannel(NotificationChannel):
 
     def send(self, content: str) -> str:
         if not self.host:
-            raise ValueError("EMAIL_HOST is required when NOTIFICATION_CHANNEL=email")
+            raise ValueError("EMAIL_HOST is required when NOTIFICATION_CHANNELS includes email")
         if not self.username:
-            raise ValueError("EMAIL_USERNAME is required when NOTIFICATION_CHANNEL=email")
+            raise ValueError("EMAIL_USERNAME is required when NOTIFICATION_CHANNELS includes email")
         if not self.password:
-            raise ValueError("EMAIL_PASSWORD is required when NOTIFICATION_CHANNEL=email")
+            raise ValueError("EMAIL_PASSWORD is required when NOTIFICATION_CHANNELS includes email")
 
         message = EmailMessage()
         message["Subject"] = "Zighang Daily Job Digest"
@@ -204,13 +204,13 @@ def _build_single_notification_channel(settings: NotificationSettings, report_pa
         return TelegramChannel(settings.telegram_bot_token, settings.telegram_chat_id)
     if channel == "discord":
         return DiscordChannel(settings.discord_webhook_url)
-    raise ValueError(f"Unsupported NOTIFICATION_CHANNEL: {settings.notification_channel}")
+    raise ValueError(f"Unsupported NOTIFICATION_CHANNELS value: {settings.notification_channel}")
 
 
 def build_notification_channel(settings: NotificationSettings, report_path: Path) -> NotificationChannel:
     channel_names = [item.strip().lower() for item in settings.notification_channel.split(",") if item.strip()]
     if not channel_names:
-        raise ValueError("NOTIFICATION_CHANNEL must include at least one channel")
+        raise ValueError("NOTIFICATION_CHANNELS must include at least one channel")
     channels = [(name, _build_single_notification_channel(settings, report_path, name)) for name in channel_names]
     if len(channels) == 1:
         return channels[0][1]

@@ -20,6 +20,8 @@ class SettingsTests(unittest.TestCase):
 
     def test_load_email_settings_from_environment(self):
         keys = [
+            "NOTIFICATION_CHANNELS",
+            "NOTIFICATION_CHANNEL",
             "EMAIL_HOST",
             "EMAIL_PORT",
             "EMAIL_USERNAME",
@@ -38,10 +40,12 @@ class SettingsTests(unittest.TestCase):
                 "TELEGRAM_BOT_TOKEN": "bot-token",
                 "TELEGRAM_CHAT_ID": "chat-id",
                 "DISCORD_WEBHOOK_URL": "https://discord.example/webhook",
+                "NOTIFICATION_CHANNELS": "markdown,email",
             }
         )
         try:
             settings = load_settings()
+            self.assertEqual(settings.notification_channel, "markdown,email")
             self.assertEqual(settings.email_host, "smtp.example.com")
             self.assertEqual(settings.email_port, 2525)
             self.assertEqual(settings.email_username, "user")
@@ -55,6 +59,25 @@ class SettingsTests(unittest.TestCase):
                     os.environ.pop(key, None)
                 else:
                     os.environ[key] = value
+
+    def test_load_settings_supports_legacy_notification_channel(self):
+        keys = ["NOTIFICATION_CHANNELS", "NOTIFICATION_CHANNEL"]
+        old = {key: os.environ.get(key) for key in keys}
+        old_cwd = Path.cwd()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            os.chdir(temp_dir)
+            os.environ.pop("NOTIFICATION_CHANNELS", None)
+            os.environ["NOTIFICATION_CHANNEL"] = "telegram"
+            try:
+                settings = load_settings()
+                self.assertEqual(settings.notification_channel, "telegram")
+            finally:
+                os.chdir(old_cwd)
+                for key, value in old.items():
+                    if value is None:
+                        os.environ.pop(key, None)
+                    else:
+                        os.environ[key] = value
 
     def test_load_settings_reads_dotenv_without_overriding_environment(self):
         keys = ["DEFAULT_PAGE_SIZE", "REQUEST_DELAY_MS"]

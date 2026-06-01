@@ -62,13 +62,13 @@ class NotificationChannelTests(unittest.TestCase):
     def test_build_notification_channel_rejects_unknown_channel(self):
         settings = Mock(notification_channel="sms", webhook_url=None)
 
-        with self.assertRaisesRegex(ValueError, "Unsupported NOTIFICATION_CHANNEL"):
+        with self.assertRaisesRegex(ValueError, "Unsupported NOTIFICATION_CHANNELS"):
             build_notification_channel(settings, Path("reports/daily/report.md"))
 
     def test_build_notification_channel_rejects_empty_channel_list(self):
         settings = Mock(notification_channel=" , ", webhook_url=None)
 
-        with self.assertRaisesRegex(ValueError, "NOTIFICATION_CHANNEL"):
+        with self.assertRaisesRegex(ValueError, "NOTIFICATION_CHANNELS"):
             build_notification_channel(settings, Path("reports/daily/report.md"))
 
     def test_email_channel_sends_markdown_with_starttls_and_login(self):

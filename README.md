@@ -56,7 +56,7 @@ cp .env.example .env
 | `REQUEST_DELAY_MS` | `300` | API 요청 간격 |
 | `RESUME_PATH` | `resumes/resume.md` | 기본 이력서 파일 |
 | `PORTFOLIO_PATH` | `portfolios/portfolio.md` | 기본 포트폴리오 파일 |
-| `NOTIFICATION_CHANNEL` | `markdown` | `markdown`, `console`, `webhook`, `email`, `telegram`, `discord`. 여러 채널은 콤마로 구분 |
+| `NOTIFICATION_CHANNELS` | `markdown` | `markdown`, `console`, `webhook`, `email`, `telegram`, `discord`. 여러 채널은 콤마로 구분 |
 | `WEBHOOK_URL` | empty | webhook digest 수신 URL |
 | `EMAIL_HOST` | empty | SMTP host |
 | `EMAIL_PORT` | `587` | SMTP port. STARTTLS 기준 |
@@ -81,7 +81,7 @@ MCP 클라이언트 설정 예:
         "ZIGHANG_BASE_URL": "https://api.zighang.com/api",
         "RESUME_PATH": "/absolute/path/to/zighang-mcp/resumes/resume.md",
         "PORTFOLIO_PATH": "/absolute/path/to/zighang-mcp/portfolios/portfolio.md",
-        "NOTIFICATION_CHANNEL": "markdown"
+        "NOTIFICATION_CHANNELS": "markdown"
       }
     }
   }
@@ -112,12 +112,12 @@ MCP 클라이언트 설정 예:
 
 ## Notification Channels
 
-`daily_job_digest`는 먼저 `reports/daily/YYYY-MM-DD.md`를 저장하고, `NOTIFICATION_CHANNEL`에 따라 추가 전송을 수행합니다.
+`daily_job_digest`는 먼저 `reports/daily/YYYY-MM-DD.md`를 저장하고, `NOTIFICATION_CHANNELS`에 따라 추가 전송을 수행합니다.
 
 여러 채널을 동시에 쓰려면 콤마로 구분합니다.
 
 ```bash
-NOTIFICATION_CHANNEL=markdown,email,telegram,discord
+NOTIFICATION_CHANNELS=markdown,email,telegram,discord
 ```
 
 다중 채널은 지정한 순서대로 전송됩니다. 중간 채널 전송이 실패하면 MCP tool 호출은 실패하고 이후 채널은 실행되지 않습니다.
@@ -125,7 +125,7 @@ NOTIFICATION_CHANNEL=markdown,email,telegram,discord
 ### Markdown
 
 ```bash
-NOTIFICATION_CHANNEL=markdown
+NOTIFICATION_CHANNELS=markdown
 ```
 
 기본값입니다. digest markdown 파일만 저장합니다.
@@ -133,7 +133,7 @@ NOTIFICATION_CHANNEL=markdown
 ### Console
 
 ```bash
-NOTIFICATION_CHANNEL=console
+NOTIFICATION_CHANNELS=console
 ```
 
 digest markdown을 stdout으로 출력합니다. 로컬 디버깅이나 수동 실행에 유용합니다.
@@ -141,7 +141,7 @@ digest markdown을 stdout으로 출력합니다. 로컬 디버깅이나 수동 �
 ### Webhook
 
 ```bash
-NOTIFICATION_CHANNEL=webhook
+NOTIFICATION_CHANNELS=webhook
 WEBHOOK_URL=https://example.com/webhook
 ```
 
@@ -158,7 +158,7 @@ HTTP 2xx가 아닌 응답이나 네트워크 오류는 MCP tool 호출 실패로
 ### Email
 
 ```bash
-NOTIFICATION_CHANNEL=email
+NOTIFICATION_CHANNELS=email
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USERNAME=your-account@gmail.com
@@ -178,7 +178,7 @@ Gmail 같은 서비스는 일반 계정 비밀번호가 아니라 앱 비밀번�
 ### Telegram
 
 ```bash
-NOTIFICATION_CHANNEL=telegram
+NOTIFICATION_CHANNELS=telegram
 TELEGRAM_BOT_TOKEN=123456:bot-token
 TELEGRAM_CHAT_ID=123456789
 ```
@@ -188,7 +188,7 @@ Telegram Bot API의 `sendMessage`를 호출해 digest markdown 원문을 보냅�
 ### Discord
 
 ```bash
-NOTIFICATION_CHANNEL=discord
+NOTIFICATION_CHANNELS=discord
 DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
 ```
 
