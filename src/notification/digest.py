@@ -14,6 +14,65 @@ def _format_deadline(deadline: dict[str, Any] | None) -> str:
     return deadline.get("type") or "-"
 
 
+def _format_list(values: list[Any] | None, limit: int = 8) -> str:
+    items = [str(value) for value in values or [] if value]
+    if not items:
+        return "-"
+    visible = items[:limit]
+    suffix = f" 외 {len(items) - limit}개" if len(items) > limit else ""
+    return ", ".join(visible) + suffix
+
+
+def _format_career(career: dict[str, Any] | None) -> str:
+    if not career:
+        return "-"
+    minimum = career.get("min")
+    maximum = career.get("max")
+    if minimum is None and maximum is None:
+        return "-"
+    if minimum is None:
+        return f"{maximum}년 이하"
+    if maximum is None:
+        return f"{minimum}년 이상"
+    if minimum == maximum:
+        return f"{minimum}년"
+    return f"{minimum}-{maximum}년"
+
+
+def _join_text(values: list[Any] | None, limit: int) -> str:
+    items = [str(value).strip() for value in values or [] if str(value).strip()]
+    return " / ".join(items[:limit])
+
+
+def _append_job_decision_details(lines: list[str], item: dict[str, Any], job: dict[str, Any]) -> None:
+    lines.append(
+        "  - 조건: "
+        f"지역 {_format_list(job.get('regions'), 4)} | "
+        f"경력 {_format_career(job.get('career'))} | "
+        f"고용 {_format_list(job.get('employment_types'), 4)} | "
+        f"마감 {_format_deadline(job.get('deadline'))}"
+    )
+    lines.append(
+        "  - 직무/키워드: "
+        f"{_format_list(job.get('jobs'), 4)} | "
+        f"{_format_list(job.get('keywords'), 6)}"
+    )
+    if item.get("matched_signals"):
+        lines.append(f"  - 매칭 신호: {_format_list(item.get('matched_signals'), 10)}")
+    if item.get("preference_reasons"):
+        lines.append(f"  - 선호 근거: {_join_text(item.get('preference_reasons'), 2)}")
+    if item.get("reasons"):
+        lines.append(f"  - 추천 이유: {_join_text(item.get('reasons'), 2)}")
+    risks = [*(item.get("risk_flags") or []), *(item.get("mismatches") or [])]
+    if risks:
+        lines.append(f"  - 확인 필요: {_join_text(risks, 3)}")
+    if item.get("evidence_snippets"):
+        lines.append(f"  - 공고 근거: {_join_text(item.get('evidence_snippets'), 3)}")
+    if item.get("pre_apply_tips"):
+        lines.append(f"  - 지원 전 체크: {_join_text(item.get('pre_apply_tips'), 2)}")
+    lines.append(f"  - URL: {job['original_url']}")
+
+
 def render_daily_digest(results_by_profile: list[dict[str, Any]], top_n: int = 5) -> str:
     all_items = []
     for profile in results_by_profile:
@@ -43,13 +102,7 @@ def render_daily_digest(results_by_profile: list[dict[str, Any]], top_n: int = 5
         for item in recommendations:
             job = item["job"]
             lines.append(f"- [{item['score']}] {job['company_name']} - {job['title']}")
-            lines.append(f"  - 지역: {', '.join(job.get('regions') or []) or '-'}")
-            lines.append(f"  - 마감: {_format_deadline(job.get('deadline'))}")
-            lines.append(f"  - URL: {job['original_url']}")
-            if item.get("reasons"):
-                lines.append(f"  - 이유: {' '.join(item['reasons'])}")
-            if item.get("mismatches"):
-                lines.append(f"  - 우려: {' '.join(item['mismatches'])}")
+            _append_job_decision_details(lines, item, job)
     lines.append("")
     return "\n".join(lines)
 
