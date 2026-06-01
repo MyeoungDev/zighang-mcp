@@ -214,6 +214,8 @@ Notification channels:
 - `telegram`: sends the markdown through Telegram Bot API `sendMessage`.
 - `discord`: sends the markdown to a Discord webhook as `content`.
 
+`NOTIFICATION_CHANNEL` accepts one channel or a comma-separated list such as `markdown,email,telegram`. Fanout runs in order and stops on the first delivery error.
+
 Schedulers should use the `zighang-digest` console script for direct one-shot digest runs. MCP clients and agents can call `daily_job_digest` directly when interactive tool orchestration is preferred.
 
 ### `track_job_status`

@@ -14,6 +14,17 @@ class NotificationChannel:
         raise NotImplementedError
 
 
+class NotificationFanoutChannel(NotificationChannel):
+    def __init__(self, channels: list[tuple[str, NotificationChannel]]) -> None:
+        self.channels = channels
+
+    def send(self, content: str) -> str:
+        results = []
+        for name, channel in self.channels:
+            results.append(f"{name}:{channel.send(content)}")
+        return ",".join(results)
+
+
 class ConsoleChannel(NotificationChannel):
     def send(self, content: str) -> str:
         print(content)
@@ -175,8 +186,7 @@ class NotificationSettings(Protocol):
     discord_webhook_url: str | None
 
 
-def build_notification_channel(settings: NotificationSettings, report_path: Path) -> NotificationChannel:
-    channel = settings.notification_channel.lower()
+def _build_single_notification_channel(settings: NotificationSettings, report_path: Path, channel: str) -> NotificationChannel:
     if channel == "console":
         return ConsoleChannel()
     if channel == "markdown":
@@ -195,3 +205,13 @@ def build_notification_channel(settings: NotificationSettings, report_path: Path
     if channel == "discord":
         return DiscordChannel(settings.discord_webhook_url)
     raise ValueError(f"Unsupported NOTIFICATION_CHANNEL: {settings.notification_channel}")
+
+
+def build_notification_channel(settings: NotificationSettings, report_path: Path) -> NotificationChannel:
+    channel_names = [item.strip().lower() for item in settings.notification_channel.split(",") if item.strip()]
+    if not channel_names:
+        raise ValueError("NOTIFICATION_CHANNEL must include at least one channel")
+    channels = [(name, _build_single_notification_channel(settings, report_path, name)) for name in channel_names]
+    if len(channels) == 1:
+        return channels[0][1]
+    return NotificationFanoutChannel(channels)

@@ -56,7 +56,7 @@ cp .env.example .env
 | `REQUEST_DELAY_MS` | `300` | API 요청 간격 |
 | `RESUME_PATH` | `resumes/resume.md` | 기본 이력서 파일 |
 | `PORTFOLIO_PATH` | `portfolios/portfolio.md` | 기본 포트폴리오 파일 |
-| `NOTIFICATION_CHANNEL` | `markdown` | `markdown`, `console`, `webhook`, `email`, `telegram`, `discord` |
+| `NOTIFICATION_CHANNEL` | `markdown` | `markdown`, `console`, `webhook`, `email`, `telegram`, `discord`. 여러 채널은 콤마로 구분 |
 | `WEBHOOK_URL` | empty | webhook digest 수신 URL |
 | `EMAIL_HOST` | empty | SMTP host |
 | `EMAIL_PORT` | `587` | SMTP port. STARTTLS 기준 |
@@ -113,6 +113,14 @@ MCP 클라이언트 설정 예:
 ## Notification Channels
 
 `daily_job_digest`는 먼저 `reports/daily/YYYY-MM-DD.md`를 저장하고, `NOTIFICATION_CHANNEL`에 따라 추가 전송을 수행합니다.
+
+여러 채널을 동시에 쓰려면 콤마로 구분합니다.
+
+```bash
+NOTIFICATION_CHANNEL=markdown,email,telegram,discord
+```
+
+다중 채널은 지정한 순서대로 전송됩니다. 중간 채널 전송이 실패하면 MCP tool 호출은 실패하고 이후 채널은 실행되지 않습니다.
 
 ### Markdown
 
@@ -231,8 +239,8 @@ profile_id는 backend, 이름은 Backend, notifications_enabled는 true로 해�
 
 ```text
 report_path=reports/daily/YYYY-MM-DD.md
-notification_channel=markdown
-notification_result=reports/daily/YYYY-MM-DD.md
+notification_channel=markdown,email
+notification_result=markdown:reports/daily/YYYY-MM-DD.md,email:email
 ```
 
 `--dry-run`은 digest report 생성까지 확인하되 webhook/email 전송은 하지 않습니다. cron이나 launchd에 올리기 전에 설정과 파일 경로를 점검할 때 사용하세요.

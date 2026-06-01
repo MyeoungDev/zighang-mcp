@@ -5,7 +5,14 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 from src.config.settings import Settings
-from src.notification.channels import DiscordChannel, EmailChannel, TelegramChannel, WebhookChannel, build_notification_channel
+from src.notification.channels import (
+    DiscordChannel,
+    EmailChannel,
+    NotificationFanoutChannel,
+    TelegramChannel,
+    WebhookChannel,
+    build_notification_channel,
+)
 
 
 class FakeResponse:
@@ -56,6 +63,12 @@ class NotificationChannelTests(unittest.TestCase):
         settings = Mock(notification_channel="sms", webhook_url=None)
 
         with self.assertRaisesRegex(ValueError, "Unsupported NOTIFICATION_CHANNEL"):
+            build_notification_channel(settings, Path("reports/daily/report.md"))
+
+    def test_build_notification_channel_rejects_empty_channel_list(self):
+        settings = Mock(notification_channel=" , ", webhook_url=None)
+
+        with self.assertRaisesRegex(ValueError, "NOTIFICATION_CHANNEL"):
             build_notification_channel(settings, Path("reports/daily/report.md"))
 
     def test_email_channel_sends_markdown_with_starttls_and_login(self):
@@ -161,6 +174,31 @@ class NotificationChannelTests(unittest.TestCase):
 
         self.assertIsInstance(channel, DiscordChannel)
         self.assertEqual(channel.webhook_url, "https://discord.example/webhook")
+
+    def test_build_notification_channel_supports_comma_separated_fanout(self):
+        settings = Settings(
+            notification_channel="markdown,telegram,discord",
+            telegram_bot_token="token",
+            telegram_chat_id="chat-id",
+            discord_webhook_url="https://discord.example/webhook",
+        )
+
+        channel = build_notification_channel(settings, Path("reports/daily/report.md"))
+
+        self.assertIsInstance(channel, NotificationFanoutChannel)
+        self.assertEqual([name for name, _ in channel.channels], ["markdown", "telegram", "discord"])
+
+    def test_fanout_channel_sends_to_all_channels_in_order(self):
+        first = Mock()
+        first.send.return_value = "first-result"
+        second = Mock()
+        second.send.return_value = "second-result"
+
+        result = NotificationFanoutChannel([("first", first), ("second", second)]).send("content")
+
+        self.assertEqual(result, "first:first-result,second:second-result")
+        first.send.assert_called_once_with("content")
+        second.send.assert_called_once_with("content")
 
 
 if __name__ == "__main__":
