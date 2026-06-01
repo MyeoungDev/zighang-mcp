@@ -54,7 +54,6 @@ cp .env.example .env
 | `ZIGHANG_COOKIE` | empty | 선택. 사용자가 직접 제공한 cookie |
 | `DEFAULT_PAGE_SIZE` | `20` | 기본 공고 목록 page size |
 | `REQUEST_DELAY_MS` | `300` | API 요청 간격 |
-| `DIGEST_TIME` | `09:00` | 외부 scheduler에서 참고할 digest 실행 시간 |
 | `RESUME_PATH` | `resumes/resume.md` | 기본 이력서 파일 |
 | `PORTFOLIO_PATH` | `portfolios/portfolio.md` | 기본 포트폴리오 파일 |
 | `NOTIFICATION_CHANNEL` | `markdown` | `markdown`, `console`, `webhook`, `email` |
@@ -167,7 +166,7 @@ Gmail 같은 서비스는 일반 계정 비밀번호가 아니라 앱 비밀번�
 
 ## Daily Operation
 
-MCP 서버는 자체 scheduler를 포함하지 않습니다. 자동 digest 운영에는 scheduler가 직접 실행할 수 있는 `zighang-digest` runner를 사용하세요.
+MCP 서버는 자체 scheduler를 포함하지 않습니다. 자동 digest 운영에는 cron, launchd, GitHub Actions 같은 외부 scheduler가 `zighang-digest` runner를 원하는 시간에 실행하도록 설정하세요.
 
 ### Agent/MCP 호출 모델
 

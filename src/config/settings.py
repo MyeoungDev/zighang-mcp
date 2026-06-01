@@ -25,7 +25,6 @@ class Settings:
     zighang_cookie: str | None = None
     default_page_size: int = 20
     request_delay_ms: int = 300
-    digest_time: str = "09:00"
     resume_path: Path = Path("resumes/resume.md")
     portfolio_path: Path = Path("portfolios/portfolio.md")
     notification_channel: str = "markdown"
@@ -46,7 +45,6 @@ def load_settings() -> Settings:
         zighang_cookie=os.getenv("ZIGHANG_COOKIE") or None,
         default_page_size=_get_int("DEFAULT_PAGE_SIZE", 20),
         request_delay_ms=_get_int("REQUEST_DELAY_MS", 300),
-        digest_time=os.getenv("DIGEST_TIME", "09:00"),
         resume_path=Path(os.getenv("RESUME_PATH", "resumes/resume.md")),
         portfolio_path=Path(os.getenv("PORTFOLIO_PATH", "portfolios/portfolio.md")),
         notification_channel=os.getenv("NOTIFICATION_CHANNEL", "markdown"),
