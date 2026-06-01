@@ -61,10 +61,8 @@ cp .env.example .env
 | `WEBHOOK_URL` | empty | webhook digest 수신 URL |
 | `EMAIL_HOST` | empty | SMTP host |
 | `EMAIL_PORT` | `587` | SMTP port. STARTTLS 기준 |
-| `EMAIL_USERNAME` | empty | 선택. SMTP username |
-| `EMAIL_PASSWORD` | empty | 선택. SMTP password 또는 앱 비밀번호 |
-| `EMAIL_FROM` | empty | 선택. 없으면 `EMAIL_USERNAME`을 email 발신자로 사용 |
-| `EMAIL_TO` | empty | 선택. 없으면 발신자에게 전송. 여러 명이면 콤마로 구분 |
+| `EMAIL_USERNAME` | empty | SMTP username. 발신자와 수신자로도 사용 |
+| `EMAIL_PASSWORD` | empty | SMTP password 또는 앱 비밀번호 |
 
 민감한 이력서, 포트폴리오, 캐시, 리포트는 기본적으로 git ignore 됩니다.
 
@@ -160,11 +158,8 @@ EMAIL_PASSWORD=your-app-password
 동작:
 
 - SMTP STARTTLS를 사용합니다.
-- `EMAIL_USERNAME`과 `EMAIL_PASSWORD`가 모두 있으면 로그인합니다.
-- 둘 중 하나만 있으면 설정 오류로 처리합니다.
-- `EMAIL_FROM`이 없으면 `EMAIL_USERNAME`을 발신자로 사용합니다.
-- `EMAIL_TO`가 없으면 발신자에게 보냅니다.
-- 다른 발신자나 여러 수신자가 필요하면 `EMAIL_FROM`, `EMAIL_TO=you@example.com,team@example.com`을 지정합니다.
+- `EMAIL_USERNAME`과 `EMAIL_PASSWORD`로 로그인합니다.
+- `EMAIL_USERNAME`을 발신자와 수신자로 모두 사용합니다.
 - 메일 제목은 `Zighang Daily Job Digest`입니다.
 - 본문은 markdown digest 원문을 plain text로 보냅니다.
 

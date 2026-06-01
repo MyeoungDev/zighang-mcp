@@ -22,23 +22,19 @@ class LiveNotificationSmokeTests(unittest.TestCase):
             name
             for name, value in [
                 ("EMAIL_HOST", settings.email_host),
-                ("EMAIL_FROM", settings.email_from),
-                ("EMAIL_TO", settings.email_to),
+                ("EMAIL_USERNAME", settings.email_username),
+                ("EMAIL_PASSWORD", settings.email_password),
             ]
             if not value
         ]
         if missing:
             self.skipTest(f"{', '.join(missing)} required for live email smoke test")
-        if bool(settings.email_username) != bool(settings.email_password):
-            self.skipTest("EMAIL_USERNAME and EMAIL_PASSWORD must be provided together for live email smoke test")
 
         result = EmailChannel(
             settings.email_host,
             settings.email_port,
             settings.email_username,
             settings.email_password,
-            settings.email_from,
-            settings.email_to,
         ).send("# Zighang live notification smoke test\n- email")
 
         self.assertEqual(result, "email")

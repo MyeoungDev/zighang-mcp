@@ -72,8 +72,8 @@ class DailyDigestNotificationTests(unittest.TestCase):
                 reports_dir=temp_path / "reports",
                 notification_channel="email",
                 email_host="smtp.example.com",
-                email_from="from@example.com",
-                email_to="to@example.com",
+                email_username="user@example.com",
+                email_password="pass",
             )
 
             with (

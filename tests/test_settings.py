@@ -19,7 +19,7 @@ class SettingsTests(unittest.TestCase):
                 os.environ["DEFAULT_PAGE_SIZE"] = old
 
     def test_load_email_settings_from_environment(self):
-        keys = ["EMAIL_HOST", "EMAIL_PORT", "EMAIL_USERNAME", "EMAIL_PASSWORD", "EMAIL_FROM", "EMAIL_TO"]
+        keys = ["EMAIL_HOST", "EMAIL_PORT", "EMAIL_USERNAME", "EMAIL_PASSWORD"]
         old = {key: os.environ.get(key) for key in keys}
         os.environ.update(
             {
@@ -27,8 +27,6 @@ class SettingsTests(unittest.TestCase):
                 "EMAIL_PORT": "2525",
                 "EMAIL_USERNAME": "user",
                 "EMAIL_PASSWORD": "pass",
-                "EMAIL_FROM": "from@example.com",
-                "EMAIL_TO": "to@example.com",
             }
         )
         try:
@@ -37,8 +35,6 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(settings.email_port, 2525)
             self.assertEqual(settings.email_username, "user")
             self.assertEqual(settings.email_password, "pass")
-            self.assertEqual(settings.email_from, "from@example.com")
-            self.assertEqual(settings.email_to, "to@example.com")
         finally:
             for key, value in old.items():
                 if value is None:

@@ -34,8 +34,6 @@ class Settings:
     email_port: int = 587
     email_username: str | None = None
     email_password: str | None = None
-    email_from: str | None = None
-    email_to: str | None = None
     data_dir: Path = Path("data/cache")
     reports_dir: Path = Path("reports/daily")
 
@@ -57,8 +55,6 @@ def load_settings() -> Settings:
         email_port=_get_int("EMAIL_PORT", 587),
         email_username=os.getenv("EMAIL_USERNAME") or None,
         email_password=os.getenv("EMAIL_PASSWORD") or None,
-        email_from=os.getenv("EMAIL_FROM") or None,
-        email_to=os.getenv("EMAIL_TO") or None,
         data_dir=Path(os.getenv("DATA_DIR", "data/cache")),
         reports_dir=Path(os.getenv("REPORTS_DIR", "reports/daily")),
     )

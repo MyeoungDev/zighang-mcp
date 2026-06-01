@@ -72,25 +72,21 @@ class EmailChannel(NotificationChannel):
         port: int,
         username: str | None,
         password: str | None,
-        sender: str | None,
-        recipients: str | None,
     ) -> None:
         self.host = host
         self.port = port
         self.username = username
         self.password = password
-        self.sender = sender or username
-        self.recipients = [item.strip() for item in (recipients or "").split(",") if item.strip()]
-        if not self.recipients and self.sender:
-            self.recipients = [self.sender]
+        self.sender = username
+        self.recipients = [username] if username else []
 
     def send(self, content: str) -> str:
         if not self.host:
             raise ValueError("EMAIL_HOST is required when NOTIFICATION_CHANNEL=email")
-        if not self.sender:
-            raise ValueError("EMAIL_FROM or EMAIL_USERNAME is required when NOTIFICATION_CHANNEL=email")
-        if not self.recipients:
-            raise ValueError("EMAIL_TO or EMAIL_USERNAME is required when NOTIFICATION_CHANNEL=email")
+        if not self.username:
+            raise ValueError("EMAIL_USERNAME is required when NOTIFICATION_CHANNEL=email")
+        if not self.password:
+            raise ValueError("EMAIL_PASSWORD is required when NOTIFICATION_CHANNEL=email")
 
         message = EmailMessage()
         message["Subject"] = "Zighang Daily Job Digest"
@@ -101,10 +97,7 @@ class EmailChannel(NotificationChannel):
         try:
             with smtplib.SMTP(self.host, self.port, timeout=10) as smtp:
                 smtp.starttls()
-                if self.username or self.password:
-                    if not self.username or not self.password:
-                        raise ValueError("EMAIL_USERNAME and EMAIL_PASSWORD must be provided together")
-                    smtp.login(self.username, self.password)
+                smtp.login(self.username, self.password)
                 smtp.send_message(message, from_addr=self.sender, to_addrs=self.recipients)
         except ValueError:
             raise
@@ -120,8 +113,6 @@ class NotificationSettings(Protocol):
     email_port: int
     email_username: str | None
     email_password: str | None
-    email_from: str | None
-    email_to: str | None
 
 
 def build_notification_channel(settings: NotificationSettings, report_path: Path) -> NotificationChannel:
@@ -138,7 +129,5 @@ def build_notification_channel(settings: NotificationSettings, report_path: Path
             settings.email_port,
             settings.email_username,
             settings.email_password,
-            settings.email_from,
-            settings.email_to,
         )
     raise ValueError(f"Unsupported NOTIFICATION_CHANNEL: {settings.notification_channel}")

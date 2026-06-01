@@ -67,76 +67,30 @@ class NotificationChannelTests(unittest.TestCase):
             result = EmailChannel(
                 host="smtp.example.com",
                 port=587,
-                username="user",
+                username="user@example.com",
                 password="pass",
-                sender="from@example.com",
-                recipients="to@example.com, second@example.com",
             ).send("# Digest\n- Job")
 
         self.assertEqual(result, "email")
         smtp_class.assert_called_once_with("smtp.example.com", 587, timeout=10)
         smtp.starttls.assert_called_once()
-        smtp.login.assert_called_once_with("user", "pass")
+        smtp.login.assert_called_once_with("user@example.com", "pass")
         smtp.send_message.assert_called_once()
         message = smtp.send_message.call_args.args[0]
         self.assertEqual(message["Subject"], "Zighang Daily Job Digest")
-        self.assertEqual(message["From"], "from@example.com")
-        self.assertEqual(message["To"], "to@example.com, second@example.com")
+        self.assertEqual(message["From"], "user@example.com")
+        self.assertEqual(message["To"], "user@example.com")
         self.assertIn("# Digest", message.get_content())
-        self.assertEqual(smtp.send_message.call_args.kwargs["to_addrs"], ["to@example.com", "second@example.com"])
-
-    def test_email_channel_skips_login_when_credentials_are_empty(self):
-        smtp = Mock()
-        smtp.__enter__ = Mock(return_value=smtp)
-        smtp.__exit__ = Mock(return_value=False)
-
-        with patch("src.notification.channels.smtplib.SMTP", return_value=smtp):
-            EmailChannel("smtp.example.com", 587, None, None, "from@example.com", "to@example.com").send("content")
-
-        smtp.starttls.assert_called_once()
-        smtp.login.assert_not_called()
-
-    def test_email_channel_defaults_sender_and_recipient_to_username(self):
-        smtp = Mock()
-        smtp.__enter__ = Mock(return_value=smtp)
-        smtp.__exit__ = Mock(return_value=False)
-
-        with patch("src.notification.channels.smtplib.SMTP", return_value=smtp):
-            EmailChannel("smtp.example.com", 587, "me@example.com", "pass", None, None).send("content")
-
-        message = smtp.send_message.call_args.args[0]
-        self.assertEqual(message["From"], "me@example.com")
-        self.assertEqual(message["To"], "me@example.com")
-        self.assertEqual(smtp.send_message.call_args.kwargs["from_addr"], "me@example.com")
-        self.assertEqual(smtp.send_message.call_args.kwargs["to_addrs"], ["me@example.com"])
-
-    def test_email_channel_allows_sender_override_with_default_recipient(self):
-        smtp = Mock()
-        smtp.__enter__ = Mock(return_value=smtp)
-        smtp.__exit__ = Mock(return_value=False)
-
-        with patch("src.notification.channels.smtplib.SMTP", return_value=smtp):
-            EmailChannel("smtp.example.com", 587, "login@example.com", "pass", "from@example.com", None).send("content")
-
-        message = smtp.send_message.call_args.args[0]
-        self.assertEqual(message["From"], "from@example.com")
-        self.assertEqual(message["To"], "from@example.com")
-        self.assertEqual(smtp.send_message.call_args.kwargs["to_addrs"], ["from@example.com"])
+        self.assertEqual(smtp.send_message.call_args.kwargs["from_addr"], "user@example.com")
+        self.assertEqual(smtp.send_message.call_args.kwargs["to_addrs"], ["user@example.com"])
 
     def test_email_channel_rejects_missing_required_settings(self):
         with self.assertRaisesRegex(ValueError, "EMAIL_HOST"):
-            EmailChannel(None, 587, None, None, "from@example.com", "to@example.com").send("content")
-        with self.assertRaisesRegex(ValueError, "EMAIL_FROM or EMAIL_USERNAME"):
-            EmailChannel("smtp.example.com", 587, None, None, None, "to@example.com").send("content")
-
-    def test_email_channel_requires_username_and_password_together(self):
-        smtp = Mock()
-        smtp.__enter__ = Mock(return_value=smtp)
-        smtp.__exit__ = Mock(return_value=False)
-
-        with patch("src.notification.channels.smtplib.SMTP", return_value=smtp):
-            with self.assertRaisesRegex(ValueError, "EMAIL_USERNAME and EMAIL_PASSWORD"):
-                EmailChannel("smtp.example.com", 587, "user", None, "from@example.com", "to@example.com").send("content")
+            EmailChannel(None, 587, "user@example.com", "pass").send("content")
+        with self.assertRaisesRegex(ValueError, "EMAIL_USERNAME"):
+            EmailChannel("smtp.example.com", 587, None, "pass").send("content")
+        with self.assertRaisesRegex(ValueError, "EMAIL_PASSWORD"):
+            EmailChannel("smtp.example.com", 587, "user@example.com", None).send("content")
 
     def test_email_channel_wraps_smtp_errors(self):
         smtp = Mock()
@@ -146,24 +100,22 @@ class NotificationChannelTests(unittest.TestCase):
 
         with patch("src.notification.channels.smtplib.SMTP", return_value=smtp):
             with self.assertRaisesRegex(RuntimeError, "Email delivery failed"):
-                EmailChannel("smtp.example.com", 587, None, None, "from@example.com", "to@example.com").send("content")
+                EmailChannel("smtp.example.com", 587, "user@example.com", "pass").send("content")
 
     def test_build_notification_channel_uses_email_settings(self):
         settings = Settings(
             notification_channel="email",
             email_host="smtp.example.com",
             email_port=587,
-            email_username="user",
+            email_username="user@example.com",
             email_password="pass",
-            email_from="from@example.com",
-            email_to="to@example.com",
         )
 
         channel = build_notification_channel(settings, Path("reports/daily/report.md"))
 
         self.assertIsInstance(channel, EmailChannel)
         self.assertEqual(channel.host, "smtp.example.com")
-        self.assertEqual(channel.recipients, ["to@example.com"])
+        self.assertEqual(channel.recipients, ["user@example.com"])
 
 
 if __name__ == "__main__":
