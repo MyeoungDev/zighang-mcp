@@ -41,9 +41,22 @@ def render_daily_digest(results_by_profile: list[dict[str, Any]], top_n: int = 5
     return "\n".join(lines)
 
 
+def render_digest_setup_required() -> str:
+    return "\n".join(
+        [
+            f"# Zighang Daily Job Digest - {date.today().isoformat()}",
+            "",
+            "## 설정이 필요합니다",
+            "- 활성화된 필터 프로필이 없어 추천 공고를 생성하지 못했습니다.",
+            "- MCP에서 `save_filter_profile`을 먼저 호출해 관심 직무, 지역, 고용형태 같은 조건을 저장하세요.",
+            "- 예: `profile_id=backend`, `name=Backend`, `notifications_enabled=true`, `filters={...}`",
+            "",
+        ]
+    )
+
+
 def save_daily_digest(markdown: str, reports_dir: Path = Path("reports/daily")) -> Path:
     reports_dir.mkdir(parents=True, exist_ok=True)
     path = reports_dir / f"{date.today().isoformat()}.md"
     path.write_text(markdown, encoding="utf-8")
     return path
-

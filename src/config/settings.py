@@ -33,6 +33,9 @@ class Settings:
     email_port: int = 587
     email_username: str | None = None
     email_password: str | None = None
+    telegram_bot_token: str | None = None
+    telegram_chat_id: str | None = None
+    discord_webhook_url: str | None = None
     data_dir: Path = Path("data/cache")
     reports_dir: Path = Path("reports/daily")
 
@@ -53,6 +56,9 @@ def load_settings() -> Settings:
         email_port=_get_int("EMAIL_PORT", 587),
         email_username=os.getenv("EMAIL_USERNAME") or None,
         email_password=os.getenv("EMAIL_PASSWORD") or None,
+        telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN") or None,
+        telegram_chat_id=os.getenv("TELEGRAM_CHAT_ID") or None,
+        discord_webhook_url=os.getenv("DISCORD_WEBHOOK_URL") or None,
         data_dir=Path(os.getenv("DATA_DIR", "data/cache")),
         reports_dir=Path(os.getenv("REPORTS_DIR", "reports/daily")),
     )

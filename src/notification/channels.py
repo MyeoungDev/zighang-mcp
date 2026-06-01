@@ -57,6 +57,63 @@ class WebhookChannel(NotificationChannel):
         return "webhook"
 
 
+class TelegramChannel(NotificationChannel):
+    def __init__(self, bot_token: str | None, chat_id: str | None) -> None:
+        self.bot_token = bot_token
+        self.chat_id = chat_id
+
+    def send(self, content: str) -> str:
+        if not self.bot_token:
+            raise ValueError("TELEGRAM_BOT_TOKEN is required when NOTIFICATION_CHANNEL=telegram")
+        if not self.chat_id:
+            raise ValueError("TELEGRAM_CHAT_ID is required when NOTIFICATION_CHANNEL=telegram")
+
+        payload = json.dumps({"chat_id": self.chat_id, "text": content}, ensure_ascii=False).encode("utf-8")
+        request = Request(
+            f"https://api.telegram.org/bot{self.bot_token}/sendMessage",
+            data=payload,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=10) as response:
+                status = getattr(response, "status", response.getcode())
+                if status < 200 or status >= 300:
+                    raise RuntimeError(f"Telegram delivery failed with HTTP {status}")
+        except HTTPError as exc:
+            raise RuntimeError(f"Telegram delivery failed with HTTP {exc.code}") from exc
+        except URLError as exc:
+            raise RuntimeError(f"Telegram delivery failed: {exc.reason}") from exc
+        return "telegram"
+
+
+class DiscordChannel(NotificationChannel):
+    def __init__(self, webhook_url: str | None) -> None:
+        self.webhook_url = webhook_url
+
+    def send(self, content: str) -> str:
+        if not self.webhook_url:
+            raise ValueError("DISCORD_WEBHOOK_URL is required when NOTIFICATION_CHANNEL=discord")
+
+        payload = json.dumps({"content": content}, ensure_ascii=False).encode("utf-8")
+        request = Request(
+            self.webhook_url,
+            data=payload,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        try:
+            with urlopen(request, timeout=10) as response:
+                status = getattr(response, "status", response.getcode())
+                if status < 200 or status >= 300:
+                    raise RuntimeError(f"Discord delivery failed with HTTP {status}")
+        except HTTPError as exc:
+            raise RuntimeError(f"Discord delivery failed with HTTP {exc.code}") from exc
+        except URLError as exc:
+            raise RuntimeError(f"Discord delivery failed: {exc.reason}") from exc
+        return "discord"
+
+
 class SavedMarkdownChannel(NotificationChannel):
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -113,6 +170,9 @@ class NotificationSettings(Protocol):
     email_port: int
     email_username: str | None
     email_password: str | None
+    telegram_bot_token: str | None
+    telegram_chat_id: str | None
+    discord_webhook_url: str | None
 
 
 def build_notification_channel(settings: NotificationSettings, report_path: Path) -> NotificationChannel:
@@ -130,4 +190,8 @@ def build_notification_channel(settings: NotificationSettings, report_path: Path
             settings.email_username,
             settings.email_password,
         )
+    if channel == "telegram":
+        return TelegramChannel(settings.telegram_bot_token, settings.telegram_chat_id)
+    if channel == "discord":
+        return DiscordChannel(settings.discord_webhook_url)
     raise ValueError(f"Unsupported NOTIFICATION_CHANNEL: {settings.notification_channel}")

@@ -56,12 +56,15 @@ cp .env.example .env
 | `REQUEST_DELAY_MS` | `300` | API 요청 간격 |
 | `RESUME_PATH` | `resumes/resume.md` | 기본 이력서 파일 |
 | `PORTFOLIO_PATH` | `portfolios/portfolio.md` | 기본 포트폴리오 파일 |
-| `NOTIFICATION_CHANNEL` | `markdown` | `markdown`, `console`, `webhook`, `email` |
+| `NOTIFICATION_CHANNEL` | `markdown` | `markdown`, `console`, `webhook`, `email`, `telegram`, `discord` |
 | `WEBHOOK_URL` | empty | webhook digest 수신 URL |
 | `EMAIL_HOST` | empty | SMTP host |
 | `EMAIL_PORT` | `587` | SMTP port. STARTTLS 기준 |
 | `EMAIL_USERNAME` | empty | SMTP username. 발신자와 수신자로도 사용 |
 | `EMAIL_PASSWORD` | empty | SMTP password 또는 앱 비밀번호 |
+| `TELEGRAM_BOT_TOKEN` | empty | Telegram bot token |
+| `TELEGRAM_CHAT_ID` | empty | Telegram message 수신 chat ID |
+| `DISCORD_WEBHOOK_URL` | empty | Discord channel webhook URL |
 
 민감한 이력서, 포트폴리오, 캐시, 리포트는 기본적으로 git ignore 됩니다.
 
@@ -164,6 +167,25 @@ EMAIL_PASSWORD=your-app-password
 
 Gmail 같은 서비스는 일반 계정 비밀번호가 아니라 앱 비밀번호 또는 별도 SMTP 정책 설정이 필요할 수 있습니다.
 
+### Telegram
+
+```bash
+NOTIFICATION_CHANNEL=telegram
+TELEGRAM_BOT_TOKEN=123456:bot-token
+TELEGRAM_CHAT_ID=123456789
+```
+
+Telegram Bot API의 `sendMessage`를 호출해 digest markdown 원문을 보냅니다.
+
+### Discord
+
+```bash
+NOTIFICATION_CHANNEL=discord
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+```
+
+Discord webhook에 digest markdown 원문을 `content`로 보냅니다.
+
 ## Daily Operation
 
 MCP 서버는 자체 scheduler를 포함하지 않습니다. 자동 digest 운영에는 cron, launchd, GitHub Actions 같은 외부 scheduler가 `zighang-digest` runner를 원하는 시간에 실행하도록 설정하세요.
@@ -171,6 +193,24 @@ MCP 서버는 자체 scheduler를 포함하지 않습니다. 자동 digest 운�
 ### Agent/MCP 호출 모델
 
 일반적인 사용 방식은 MCP client나 Agent가 `daily_job_digest` tool을 호출하고, 반환된 `markdown` 또는 `report_path`를 읽어 사용자에게 요약하는 것입니다.
+
+예:
+
+```text
+직행 MCP의 daily_job_digest를 실행해줘. resume_profile_id는 default, top_n은 5로 해줘.
+```
+
+digest는 저장된 필터 프로필을 기준으로 추천 공고를 수집합니다. 먼저 `save_filter_profile`로 알림 대상 필터를 저장하세요.
+
+예:
+
+```text
+직행 MCP에 백엔드 필터 프로필을 저장해줘.
+profile_id는 backend, 이름은 Backend, notifications_enabled는 true로 해줘.
+필터는 IT_개발 직군 중심으로 설정해줘.
+```
+
+활성 필터 프로필이 없으면 digest는 공고 추천을 시도하지 않고 `setup_required=true`와 설정 안내 markdown을 반환합니다.
 
 ### Scheduler runner
 

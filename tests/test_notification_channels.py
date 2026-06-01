@@ -5,7 +5,7 @@ from unittest.mock import Mock, patch
 from urllib.error import HTTPError
 
 from src.config.settings import Settings
-from src.notification.channels import EmailChannel, WebhookChannel, build_notification_channel
+from src.notification.channels import DiscordChannel, EmailChannel, TelegramChannel, WebhookChannel, build_notification_channel
 
 
 class FakeResponse:
@@ -116,6 +116,51 @@ class NotificationChannelTests(unittest.TestCase):
         self.assertIsInstance(channel, EmailChannel)
         self.assertEqual(channel.host, "smtp.example.com")
         self.assertEqual(channel.recipients, ["user@example.com"])
+
+    def test_telegram_channel_sends_message(self):
+        with patch("src.notification.channels.urlopen", return_value=FakeResponse(200)) as urlopen_mock:
+            result = TelegramChannel("token", "chat-id").send("# Digest")
+
+        self.assertEqual(result, "telegram")
+        request = urlopen_mock.call_args.args[0]
+        self.assertEqual(request.full_url, "https://api.telegram.org/bottoken/sendMessage")
+        self.assertEqual(json.loads(request.data.decode("utf-8")), {"chat_id": "chat-id", "text": "# Digest"})
+
+    def test_telegram_channel_rejects_missing_settings(self):
+        with self.assertRaisesRegex(ValueError, "TELEGRAM_BOT_TOKEN"):
+            TelegramChannel(None, "chat-id").send("content")
+        with self.assertRaisesRegex(ValueError, "TELEGRAM_CHAT_ID"):
+            TelegramChannel("token", None).send("content")
+
+    def test_discord_channel_sends_message(self):
+        with patch("src.notification.channels.urlopen", return_value=FakeResponse(204)) as urlopen_mock:
+            result = DiscordChannel("https://discord.example/webhook").send("# Digest")
+
+        self.assertEqual(result, "discord")
+        request = urlopen_mock.call_args.args[0]
+        self.assertEqual(request.full_url, "https://discord.example/webhook")
+        self.assertEqual(json.loads(request.data.decode("utf-8")), {"content": "# Digest"})
+
+    def test_discord_channel_rejects_missing_webhook(self):
+        with self.assertRaisesRegex(ValueError, "DISCORD_WEBHOOK_URL"):
+            DiscordChannel(None).send("content")
+
+    def test_build_notification_channel_uses_telegram_settings(self):
+        settings = Settings(notification_channel="telegram", telegram_bot_token="token", telegram_chat_id="chat-id")
+
+        channel = build_notification_channel(settings, Path("reports/daily/report.md"))
+
+        self.assertIsInstance(channel, TelegramChannel)
+        self.assertEqual(channel.bot_token, "token")
+        self.assertEqual(channel.chat_id, "chat-id")
+
+    def test_build_notification_channel_uses_discord_settings(self):
+        settings = Settings(notification_channel="discord", discord_webhook_url="https://discord.example/webhook")
+
+        channel = build_notification_channel(settings, Path("reports/daily/report.md"))
+
+        self.assertIsInstance(channel, DiscordChannel)
+        self.assertEqual(channel.webhook_url, "https://discord.example/webhook")
 
 
 if __name__ == "__main__":

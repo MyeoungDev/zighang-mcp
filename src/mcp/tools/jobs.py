@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 
 from src.config.settings import load_settings
 from src.notification.channels import build_notification_channel
-from src.notification.digest import render_daily_digest, save_daily_digest
+from src.notification.digest import render_daily_digest, render_digest_setup_required, save_daily_digest
 from src.recommender.matcher import explain_match
 from src.recommender.preference_parser import infer_preferences_from_text, merge_preferences
 from src.recommender.resume_parser import analyze_text_profile, extract_projects, extract_skills, load_profile_from_paths, read_text_file
@@ -484,9 +484,26 @@ def daily_job_digest(
     new_job_ids = []
     excluded_existing_count = 0
     deadline_soon_count = 0
-    for profile in store.list_filter_profiles():
-        if not profile.get("notifications_enabled", True):
-            continue
+    active_profiles = [profile for profile in store.list_filter_profiles() if profile.get("notifications_enabled", True)]
+    if not active_profiles:
+        markdown = render_digest_setup_required()
+        path = save_daily_digest(markdown, settings.reports_dir)
+        notification_result = build_notification_channel(settings, path).send(markdown) if send_notification else "dry-run"
+        return {
+            "report_path": str(path),
+            "markdown": markdown,
+            "profiles": [],
+            "new_job_count": 0,
+            "deadline_soon_count": 0,
+            "excluded_existing_count": 0,
+            "digest_history": state.get("digest_history", {}),
+            "notification_channel": settings.notification_channel,
+            "notification_result": notification_result,
+            "setup_required": True,
+            "setup_message": "No active filter profiles. Call save_filter_profile before daily_job_digest.",
+        }
+
+    for profile in active_profiles:
         profile_filters = profile.get("filters") or {}
         rec = recommend_jobs(filter_profile_id=profile["id"], resume_profile_id=resume_profile_id, limit=limit_per_profile * 2)
         recommendations = []
@@ -509,8 +526,12 @@ def daily_job_digest(
         results.append({"profile_id": profile["id"], "name": profile.get("name"), "recommendations": recommendations})
     markdown = render_daily_digest(results, top_n=top_n)
     path = save_daily_digest(markdown, settings.reports_dir)
-    history = store.update_digest_history(new_job_ids, datetime.now(ZoneInfo("Asia/Seoul")).isoformat())
     notification_result = build_notification_channel(settings, path).send(markdown) if send_notification else "dry-run"
+    history = (
+        store.update_digest_history(new_job_ids, datetime.now(ZoneInfo("Asia/Seoul")).isoformat())
+        if send_notification
+        else state.get("digest_history", {})
+    )
     return {
         "report_path": str(path),
         "markdown": markdown,
@@ -521,6 +542,7 @@ def daily_job_digest(
         "digest_history": history,
         "notification_channel": settings.notification_channel,
         "notification_result": notification_result,
+        "setup_required": False,
     }
 
 

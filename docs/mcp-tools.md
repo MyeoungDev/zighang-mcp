@@ -178,6 +178,8 @@ Profiles are stored locally under `data/cache/state.json`.
 
 Generates `reports/daily/YYYY-MM-DD.md` from enabled filter profiles and sends the same markdown through the configured notification channel.
 
+At least one enabled filter profile is required. If none exists, the tool returns `setup_required=true`, writes a setup guidance digest, and skips recommendation lookup.
+
 Inputs:
 
 - `resume_profile_id`
@@ -200,6 +202,8 @@ Output:
 - `digest_history`
 - `notification_channel`
 - `notification_result`
+- `setup_required`
+- `setup_message` when setup is required
 
 Notification channels:
 
@@ -207,6 +211,8 @@ Notification channels:
 - `console`: prints the digest to stdout.
 - `webhook`: POSTs `{"text": "<markdown>"}` to `WEBHOOK_URL`.
 - `email`: sends the markdown as a plain text SMTP email.
+- `telegram`: sends the markdown through Telegram Bot API `sendMessage`.
+- `discord`: sends the markdown to a Discord webhook as `content`.
 
 Schedulers should use the `zighang-digest` console script for direct one-shot digest runs. MCP clients and agents can call `daily_job_digest` directly when interactive tool orchestration is preferred.
 

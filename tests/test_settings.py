@@ -19,7 +19,15 @@ class SettingsTests(unittest.TestCase):
                 os.environ["DEFAULT_PAGE_SIZE"] = old
 
     def test_load_email_settings_from_environment(self):
-        keys = ["EMAIL_HOST", "EMAIL_PORT", "EMAIL_USERNAME", "EMAIL_PASSWORD"]
+        keys = [
+            "EMAIL_HOST",
+            "EMAIL_PORT",
+            "EMAIL_USERNAME",
+            "EMAIL_PASSWORD",
+            "TELEGRAM_BOT_TOKEN",
+            "TELEGRAM_CHAT_ID",
+            "DISCORD_WEBHOOK_URL",
+        ]
         old = {key: os.environ.get(key) for key in keys}
         os.environ.update(
             {
@@ -27,6 +35,9 @@ class SettingsTests(unittest.TestCase):
                 "EMAIL_PORT": "2525",
                 "EMAIL_USERNAME": "user",
                 "EMAIL_PASSWORD": "pass",
+                "TELEGRAM_BOT_TOKEN": "bot-token",
+                "TELEGRAM_CHAT_ID": "chat-id",
+                "DISCORD_WEBHOOK_URL": "https://discord.example/webhook",
             }
         )
         try:
@@ -35,6 +46,9 @@ class SettingsTests(unittest.TestCase):
             self.assertEqual(settings.email_port, 2525)
             self.assertEqual(settings.email_username, "user")
             self.assertEqual(settings.email_password, "pass")
+            self.assertEqual(settings.telegram_bot_token, "bot-token")
+            self.assertEqual(settings.telegram_chat_id, "chat-id")
+            self.assertEqual(settings.discord_webhook_url, "https://discord.example/webhook")
         finally:
             for key, value in old.items():
                 if value is None:
