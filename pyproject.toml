@@ -1,0 +1,26 @@
+[project]
+name = "zighang-mcp"
+version = "0.1.0"
+description = "Personal MCP server for Zighang job search, recommendation, and daily digests."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.2.0",
+  "python-dotenv>=1.0.0",
+  "pypdf>=5.0.0",
+]
+
+[project.optional-dependencies]
+dev = []
+
+[project.scripts]
+zighang-mcp = "src.mcp.server:main"
+zighang-digest = "src.cli.digest:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

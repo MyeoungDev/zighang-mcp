@@ -1,0 +1,17 @@
+.omx/
+.codex/
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+.idea/
+*.egg-info/
+data/cache/*
+!data/cache/.gitkeep
+reports/daily/*
+!reports/daily/.gitkeep
+resumes/*
+!resumes/.gitkeep
+portfolios/*
+!portfolios/.gitkeep

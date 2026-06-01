@@ -1,0 +1,31 @@
+{
+  "content": [
+    {
+      "id": "job-1",
+      "affiliate": "고용24",
+      "company": {"id": "company-1", "name": "Acme", "image": null},
+      "title": "Java Spring Backend Engineer",
+      "createdAt": "2026-05-19T10:44:16.070406",
+      "endDate": "2099-05-29T23:59:59",
+      "deadlineType": "마감일",
+      "careerMin": 3,
+      "careerMax": 8,
+      "regions": ["서울"],
+      "employeeTypes": ["정규직"],
+      "educations": ["학사"],
+      "depthOnes": ["IT_개발"],
+      "depthTwos": ["서버_백엔드"],
+      "depthThrees": [],
+      "views": 10,
+      "bookmarked": false,
+      "tags": [],
+      "keywords": ["Java", "Spring Boot", "PostgreSQL"],
+      "badges": []
+    }
+  ],
+  "page": 0,
+  "size": 1,
+  "totalElements": 1,
+  "totalPages": 1,
+  "last": true
+}
