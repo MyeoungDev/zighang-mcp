@@ -1,5 +1,7 @@
 # Zighang Personal MCP Server
 
+Unofficial personal MCP server. This project is not affiliated with or endorsed by Zighang.
+
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-FastMCP-green.svg)](https://modelcontextprotocol.io/)
 [![Tests](https://img.shields.io/badge/tests-unittest-lightgrey.svg)](#testing)

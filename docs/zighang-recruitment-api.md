@@ -1,6 +1,13 @@
-# Zighang Recruitment API Spec
+# Zighang Recruitment Observed Implementation Notes
 
-Collected from `https://zighang.com/recruitment` on 2026-05-19 KST by inspecting the live Next.js bundles and validating direct API calls.
+Unofficial notes from behavior observed while using public Zighang recruitment pages and API responses on 2026-05-19 KST. This is not an official API specification and may break at any time.
+
+## Scope And Safety
+
+- For personal low-volume use only.
+- Uses only public web/app API requests observed from the Zighang site.
+- No scraping-defense bypass, token harvesting, or high-volume crawling is implemented.
+- Service terms and policies should be checked by the user before use.
 
 ## Base Contract
 

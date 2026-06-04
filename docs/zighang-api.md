@@ -1,9 +1,10 @@
-# Zighang API Specification
+# Zighang Observed Implementation Notes
 
-Collected from the public `https://zighang.com/recruitment` web app and direct public API calls on 2026-05-19 KST.
+Unofficial notes from behavior observed while using public Zighang recruitment pages and API responses on 2026-05-19 KST. This is not an official API specification and may break at any time.
 
 ## Scope And Safety
 
+- For personal low-volume use only.
 - Uses only public web/app API requests observed from the Zighang site.
 - Auth-required APIs are documented but not used unless the user provides `ZIGHANG_AUTH_TOKEN` or `ZIGHANG_COOKIE`.
 - No scraping-defense bypass, token harvesting, or high-volume crawling is implemented.
@@ -197,4 +198,3 @@ The client treats `success: false` as an API error regardless of HTTP status.
 ## Rate Limit / Request Limit Observations
 
 No explicit `429` or rate-limit headers were observed during low-volume validation calls. Response headers include no-cache and standard security headers. The local client still applies `REQUEST_DELAY_MS` between calls to avoid aggressive request behavior.
-
