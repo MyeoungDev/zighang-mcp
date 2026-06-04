@@ -160,7 +160,25 @@ zighang-mcp
 
 ## MCP Client Setup
 
-MCP 클라이언트 설정 예:
+MCP 클라이언트에는 서버 실행 command만 등록하면 됩니다. 가장 단순한 설정은 아래 형태입니다.
+
+```json
+{
+  "mcpServers": {
+    "zighang": {
+      "command": "/absolute/path/to/zighang-mcp/.venv/bin/zighang-mcp",
+      "env": {
+        "ZIGHANG_BASE_URL": "https://api.zighang.com/api",
+        "NOTIFICATION_CHANNELS": "markdown"
+      }
+    }
+  }
+}
+```
+
+`command`는 MCP 클라이언트가 어디에서 실행되든 서버를 찾을 수 있어야 하므로 절대 경로를 권장합니다. `RESUME_PATH`, `PORTFOLIO_PATH`, `DATA_DIR`, `REPORTS_DIR`는 기본값을 그대로 써도 됩니다.
+
+MCP 클라이언트가 repo root가 아닌 위치에서 서버를 실행하거나, 이력서/리포트 경로를 명확히 고정하고 싶다면 아래처럼 로컬 데이터 경로도 절대 경로로 지정하세요.
 
 ```json
 {
@@ -179,8 +197,6 @@ MCP 클라이언트 설정 예:
   }
 }
 ```
-
-운영용 설정에는 상대 경로보다 절대 경로를 권장합니다. MCP 클라이언트가 repo root를 working directory로 실행하지 않을 수 있으므로, 이력서/포트폴리오뿐 아니라 `DATA_DIR`와 `REPORTS_DIR`도 절대 경로로 지정하는 편이 안전합니다.
 
 ## Main MCP Tools
 
