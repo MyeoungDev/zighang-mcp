@@ -353,12 +353,23 @@ RUN_LIVE_NOTIFICATION_TESTS=1 .venv/bin/python -m unittest tests.test_smoke_live
 - [Zighang recruitment API notes](docs/zighang-recruitment-api.md)
 - [Implementation Plan](docs/implementation-plan.md)
 
+## License
+
+MIT License. See [LICENSE](LICENSE).
+
 ## Security And Privacy
 
 - 개인 이력서, 포트폴리오, 캐시, 리포트는 repository에 커밋하지 마세요.
 - `ZIGHANG_AUTH_TOKEN`, `ZIGHANG_COOKIE`, `EMAIL_PASSWORD`, webhook URL은 repository에 커밋하지 마세요.
 - webhook/email/telegram/discord 전송 시 digest 본문에 개인 이력서 기반 추천 정보가 포함될 수 있습니다.
 - 외부 scheduler나 CI를 사용할 때 secret 출력과 artifact 업로드 설정을 확인하세요.
+
+## API Usage Notice
+
+- 이 프로젝트는 Zighang public API 형태를 기준으로 동작하며, API 구조나 정책이 바뀌면 동작이 달라질 수 있습니다.
+- 고빈도 호출, 대량 수집, 우회성 크롤링 용도가 아닙니다. 개인 digest와 추천에 필요한 범위에서 사용하세요.
+- `ZIGHANG_AUTH_TOKEN` 또는 `ZIGHANG_COOKIE`는 사용자가 직접 설정한 경우에만 요청에 포함됩니다. 프로젝트가 인증 정보를 수집하거나 발급하지 않습니다.
+- Zighang 서비스 약관, robots 정책, API 사용 정책은 사용자가 직접 확인하고 준수해야 합니다.
 
 ## Project Status
 

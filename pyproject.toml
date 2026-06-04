@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Personal MCP server for Zighang job search, recommendation, and daily digests."
 readme = "README.md"
 requires-python = ">=3.11"
+license = "MIT"
 dependencies = [
   "mcp>=1.2.0",
   "python-dotenv>=1.0.0",
