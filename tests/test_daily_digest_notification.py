@@ -27,6 +27,59 @@ class DailyDigestNotificationTests(unittest.TestCase):
             self.assertTrue(Path(result["report_path"]).exists())
             recommend_mock.assert_not_called()
 
+    def test_daily_job_digest_for_me_uses_preferences_without_filter_profiles(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            settings = Settings(data_dir=temp_path, reports_dir=temp_path / "reports", notification_channel="markdown")
+            store = JsonStore(temp_path / "state.json")
+            store.update_user_preferences(
+                {
+                    "preferred_job_categories": ["IT_개발"],
+                    "preferred_job_subcategories": ["서버_백엔드"],
+                    "preferred_regions": ["서울"],
+                    "preferred_employment_types": ["정규직"],
+                    "excluded_keywords": ["프론트엔드"],
+                }
+            )
+            recommendation = {
+                "score": 91,
+                "job": {
+                    "id": "job-1",
+                    "company_name": "Acme",
+                    "title": "Backend Engineer",
+                    "regions": ["서울"],
+                    "deadline": {"end_date": "2026-06-30"},
+                    "career": {"min": 3, "max": 7},
+                    "employment_types": ["정규직"],
+                    "jobs": ["서버_백엔드"],
+                    "keywords": ["Java"],
+                    "original_url": "https://zighang.com/recruitment/job-1",
+                },
+                "reasons": ["Java 경험이 맞습니다."],
+                "mismatches": [],
+            }
+
+            with (
+                patch("src.mcp.tools.jobs.load_settings", return_value=settings),
+                patch("src.mcp.tools.jobs._posted_date_range", return_value=("2026-06-02", "2026-06-02T00:00:00", "2026-06-02T23:59:59")),
+                patch("src.mcp.tools.jobs.search_pinned_jobs", return_value={"jobs": []}),
+                patch("src.mcp.tools.jobs.recommend_jobs", return_value={"recommendations": [recommendation]}) as recommend_mock,
+            ):
+                result = jobs.daily_job_digest_for_me()
+
+            self.assertFalse(result["setup_required"])
+            self.assertEqual(result["posted_date"], "2026-06-02")
+            self.assertIn("Backend Engineer", result["markdown"])
+            self.assertTrue(Path(result["report_path"]).exists())
+            filters = recommend_mock.call_args.kwargs["inline_filter"]
+            self.assertEqual(filters["job_categories"], ["IT_개발"])
+            self.assertEqual(filters["job_subcategories"], ["서버_백엔드"])
+            self.assertEqual(filters["regions"], ["서울"])
+            self.assertEqual(filters["employment_types"], ["정규직"])
+            self.assertEqual(filters["start_date"], "2026-06-02T00:00:00")
+            self.assertEqual(filters["end_date"], "2026-06-02T23:59:59")
+            self.assertIn("프론트엔드", filters["exclude_keywords"])
+
     def test_daily_job_digest_sends_webhook_after_saving_report(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)

@@ -53,6 +53,26 @@ class ScoringTests(unittest.TestCase):
         self.assertLess(result["score"], 40)
         self.assertTrue(result["preference_warnings"])
 
+    def test_feedback_jobs_adjust_score_with_explanations(self):
+        data = json.loads((FIXTURES / "job_list.json").read_text(encoding="utf-8"))["content"][0]
+        job = JobSummary.from_api(data)
+
+        positive = score_job(
+            job,
+            {"skills": [], "keywords": [], "projects": []},
+            feedback_jobs=[{"status": "interested", "job": job}],
+        )
+        negative = score_job(
+            job,
+            {"skills": [], "keywords": [], "projects": []},
+            feedback_jobs=[{"status": "ignored", "job": job}],
+        )
+
+        self.assertGreater(positive["score_breakdown"]["feedback_affinity"], 0)
+        self.assertTrue(positive["feedback_reasons"])
+        self.assertLess(negative["score_breakdown"]["feedback_penalty"], 0)
+        self.assertTrue(negative["feedback_warnings"])
+
     def test_score_job_returns_structured_evidence_for_detail(self):
         data = json.loads((FIXTURES / "job_detail.json").read_text(encoding="utf-8"))
         job = JobDetail.from_api(data)

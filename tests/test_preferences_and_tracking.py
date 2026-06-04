@@ -101,6 +101,19 @@ class PreferenceAndTrackingTests(unittest.TestCase):
         self.assertEqual(history["last_run_at"], "2026-05-21T10:00:00+09:00")
         self.assertEqual(history["seen_job_ids"], ["job-1", "job-2", "job-3"])
 
+    def test_job_detail_cache_persists_and_prunes_old_entries(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            store = JsonStore(Path(temp_dir) / "state.json")
+            store.upsert_job_detail_cache("old", {"id": "old"}, "2026-05-20T09:00:00+09:00", max_entries=2)
+            store.upsert_job_detail_cache("job-1", {"id": "job-1"}, "2026-05-21T09:00:00+09:00", max_entries=2)
+            store.upsert_job_detail_cache("job-2", {"id": "job-2"}, "2026-05-22T09:00:00+09:00", max_entries=2)
+
+            state = store.load()
+            cached = store.get_job_detail_cache("job-2")
+
+        self.assertNotIn("old", state["job_detail_cache"])
+        self.assertEqual(cached["detail"]["id"], "job-2")
+
     def test_partial_existing_state_merges_nested_defaults(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             path = Path(temp_dir) / "state.json"
@@ -111,6 +124,7 @@ class PreferenceAndTrackingTests(unittest.TestCase):
         self.assertEqual(preferences["preferred_regions"], ["서울"])
         self.assertEqual(preferences["excluded_keywords"], [])
         self.assertTrue(preferences["default_exclude_internships"])
+        self.assertEqual(JsonStore(path).load()["job_detail_cache"], {})
 
 
 if __name__ == "__main__":

@@ -9,6 +9,8 @@ from src.zighang.models import JobDetail, JobSummary
 NEGATIVE_STATUSES = {"ignored", "rejected"}
 LOW_PRIORITY_STATUSES = {"viewed", "applied"}
 POSITIVE_STATUSES = {"bookmarked", "interested"}
+FEEDBACK_POSITIVE_WEIGHTS = {"interested": 10, "bookmarked": 8, "applied": 6}
+FEEDBACK_NEGATIVE_WEIGHTS = {"ignored": -10, "rejected": -8}
 
 
 def _overlap(left: list[str], right: list[str]) -> set[str]:
@@ -33,6 +35,78 @@ def _job_text(job: JobSummary | JobDetail) -> str:
     if isinstance(job, JobDetail):
         parts.extend([job.summary_text, job.content_text])
     return "\n".join(part for part in parts if part)
+
+
+def _feedback_terms(job: JobSummary | JobDetail) -> list[str]:
+    return [
+        *job.keywords,
+        *job.tags,
+        *job.depth_ones,
+        *job.depth_twos,
+        *job.depth_threes,
+        *job.regions,
+        *job.employee_types,
+        job.title,
+    ]
+
+
+def _feedback_similarity(candidate: JobSummary | JobDetail, previous: JobSummary | JobDetail) -> tuple[int, list[str]]:
+    candidate_terms = _feedback_terms(candidate)
+    previous_terms = _feedback_terms(previous)
+    matched_keywords = sorted(_overlap(candidate.keywords, previous.keywords))
+    matched_jobs = sorted(_overlap(candidate.depth_ones + candidate.depth_twos + candidate.depth_threes, previous.depth_ones + previous.depth_twos + previous.depth_threes))
+    matched_regions = sorted(_overlap(candidate.regions, previous.regions))
+    matched_employment = sorted(_overlap(candidate.employee_types, previous.employee_types))
+    matched_title_terms = sorted(_overlap([candidate.title], previous_terms) | _overlap([previous.title], candidate_terms))
+
+    similarity = (
+        min(6, len(matched_keywords) * 2)
+        + min(5, len(matched_jobs) * 3)
+        + min(3, len(matched_regions))
+        + min(3, len(matched_employment))
+        + min(3, len(matched_title_terms))
+    )
+    signals = [*matched_keywords[:3], *matched_jobs[:3], *matched_regions[:2], *matched_employment[:2], *matched_title_terms[:1]]
+    return similarity, signals
+
+
+def _feedback_adjustment(
+    job: JobSummary | JobDetail,
+    feedback_jobs: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    affinity = 0
+    penalty = 0
+    reasons: list[str] = []
+    warnings: list[str] = []
+    if not feedback_jobs:
+        return {"affinity": 0, "penalty": 0, "reasons": reasons, "warnings": warnings}
+
+    for item in feedback_jobs:
+        previous = item.get("job")
+        status = item.get("status")
+        if not isinstance(previous, JobSummary):
+            continue
+        similarity, signals = _feedback_similarity(job, previous)
+        if similarity <= 0:
+            continue
+        signal_text = ", ".join(signals[:4]) if signals else "유사한 조건"
+        if status in FEEDBACK_POSITIVE_WEIGHTS:
+            delta = min(FEEDBACK_POSITIVE_WEIGHTS[status], similarity)
+            affinity += delta
+            if len(reasons) < 3:
+                reasons.append(f"이전에 {status}로 표시한 공고와 {signal_text} 항목이 유사합니다.")
+        elif status in FEEDBACK_NEGATIVE_WEIGHTS:
+            delta = max(FEEDBACK_NEGATIVE_WEIGHTS[status], -similarity)
+            penalty += delta
+            if len(warnings) < 3:
+                warnings.append(f"이전에 {status}로 표시한 공고와 {signal_text} 항목이 유사합니다.")
+
+    return {
+        "affinity": min(20, affinity),
+        "penalty": max(-20, penalty),
+        "reasons": reasons,
+        "warnings": warnings,
+    }
 
 
 def _evidence_snippets(job: JobSummary | JobDetail, terms: list[str], limit: int = 5) -> list[str]:
@@ -85,6 +159,7 @@ def score_job(
     resume_profile: dict[str, Any] | None = None,
     saved_status: str | None = None,
     user_preferences: dict[str, Any] | None = None,
+    feedback_jobs: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     profile = resume_profile or {}
     preferences = user_preferences or {}
@@ -109,6 +184,8 @@ def score_job(
         "preferred_employment": 0,
         "deadline": 0,
         "saved_status": 0,
+        "feedback_affinity": 0,
+        "feedback_penalty": 0,
         "penalties": 0,
     }
     score = breakdown["base"] + breakdown["resume_skills"] + breakdown["resume_keywords"] + breakdown["resume_projects"]
@@ -187,6 +264,14 @@ def score_job(
     if saved_message and saved_delta < 0:
         risk_flags.append(saved_message)
 
+    feedback = _feedback_adjustment(job, feedback_jobs)
+    breakdown["feedback_affinity"] = feedback["affinity"]
+    breakdown["feedback_penalty"] = feedback["penalty"]
+    score += feedback["affinity"] + feedback["penalty"]
+    preference_reasons.extend(feedback["reasons"])
+    preference_warnings.extend(feedback["warnings"])
+    risk_flags.extend(feedback["warnings"])
+
     if job.career_min is not None and job.career_min >= 5:
         risk_flags.append(f"요구 경력 하한 {job.career_min}년입니다.")
     if job.deadline_type:
@@ -226,6 +311,8 @@ def score_job(
         "mismatches": mismatches,
         "preference_reasons": preference_reasons,
         "preference_warnings": preference_warnings,
+        "feedback_reasons": feedback["reasons"],
+        "feedback_warnings": feedback["warnings"],
         "resume_highlights": matched_skills or matched_keywords[:5],
         "pre_apply_tips": [
             "공고의 담당업무와 직접 연결되는 프로젝트 성과를 이력서 상단에 배치하세요.",

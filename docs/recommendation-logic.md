@@ -18,6 +18,7 @@ The first implementation uses deterministic local scoring. It does not send resu
   - extracted keywords
 - Local job status:
   - viewed/bookmarked/interested/applied/rejected/ignored
+- Cached details for locally tracked jobs, when available
 
 ## Scoring
 
@@ -29,6 +30,7 @@ Positive signals:
 - Resume keyword overlap: up to `15`.
 - Project line overlap: up to `10`.
 - Bookmarked/interested status: `+10`.
+- Similarity to locally tracked positive jobs: up to `+20`.
 - Deadline within 7 days: `+6`.
 - Deadline within 3 days: `+12`.
 
@@ -36,6 +38,7 @@ Negative signals:
 
 - Viewed/applied status: `-10`.
 - Ignored/rejected status: `-35`.
+- Similarity to locally tracked ignored/rejected jobs: down to `-20`.
 - Already closed deadline: `-20`.
 
 Scores are clamped to `0..100`.
@@ -47,6 +50,7 @@ Every recommendation includes:
 - concrete matched skill/keyword evidence when available
 - deadline context when relevant
 - mismatch warnings
+- local feedback reasons and warnings when prior tracked jobs are similar
 - resume highlight suggestions
 - pre-apply improvement tips
 
@@ -61,4 +65,3 @@ lower(company_name), lower(title), affiliate
 ```
 
 This is conservative enough for a first pass and avoids collapsing different source postings with similar titles unless they share the same source label.
-

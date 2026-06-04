@@ -11,6 +11,10 @@ DEFAULT_STATE = {
     "filter_profiles": {},
     "job_statuses": {},
     "resume_profiles": {},
+    "job_detail_cache": {},
+    "daily_snapshots": {},
+    "job_history": {},
+    "weekly_summaries": {},
     "seen_jobs": {},
     "user_preferences": {
         "preferred_job_categories": [],
@@ -105,6 +109,25 @@ class JsonStore:
     def get_resume_profile(self, profile_id: str = "default") -> dict[str, Any] | None:
         return self.load()["resume_profiles"].get(profile_id)
 
+    def get_job_detail_cache(self, job_id: str) -> dict[str, Any] | None:
+        return self.load()["job_detail_cache"].get(job_id)
+
+    def upsert_job_detail_cache(self, job_id: str, detail: dict[str, Any], fetched_at: str, max_entries: int = 500) -> dict[str, Any]:
+        state = self.load()
+        cache = state["job_detail_cache"]
+        cache[job_id] = {
+            "job_id": job_id,
+            "detail": detail,
+            "fetched_at": fetched_at,
+            "source": "zighang",
+        }
+        if max_entries > 0 and len(cache) > max_entries:
+            overflow = len(cache) - max_entries
+            for old_key, _ in sorted(cache.items(), key=lambda pair: str(pair[1].get("fetched_at") or ""))[:overflow]:
+                cache.pop(old_key, None)
+        self.save(state)
+        return cache[job_id]
+
     def get_user_preferences(self) -> dict[str, Any]:
         return self.load()["user_preferences"]
 
@@ -131,3 +154,59 @@ class JsonStore:
         }
         self.save(state)
         return state["digest_history"]
+
+    def upsert_daily_snapshot(self, snapshot_date: str, snapshot: dict[str, Any]) -> dict[str, Any]:
+        state = self.load()
+        state["daily_snapshots"][snapshot_date] = snapshot
+        self.save(state)
+        return snapshot
+
+    def upsert_job_history_from_snapshot(self, snapshot_date: str, snapshot: dict[str, Any]) -> dict[str, Any]:
+        state = self.load()
+        history = state["job_history"]
+        for record in snapshot.get("jobs") or []:
+            job_id = str(record.get("id") or "")
+            if not job_id:
+                continue
+            previous = history.get(job_id, {})
+            score = int(record.get("score") or 0)
+            history[job_id] = {
+                "id": job_id,
+                "company_name": record.get("company_name"),
+                "title": record.get("title"),
+                "original_url": record.get("original_url"),
+                "first_seen_date": previous.get("first_seen_date") or snapshot_date,
+                "last_seen_date": snapshot_date,
+                "seen_count": int(previous.get("seen_count") or 0) + 1,
+                "best_score": max(int(previous.get("best_score") or 0), score),
+                "latest_score": score,
+                "keywords": record.get("keywords") or [],
+                "jobs": record.get("jobs") or [],
+                "regions": record.get("regions") or [],
+                "deadline": record.get("deadline") or {},
+                "risk_flags": record.get("risk_flags") or [],
+                "mismatches": record.get("mismatches") or [],
+                "pre_apply_tips": record.get("pre_apply_tips") or [],
+                "matched_signals": record.get("matched_signals") or [],
+            }
+        self.save(state)
+        return history
+
+    def save_digest_snapshot(self, snapshot_date: str, snapshot: dict[str, Any]) -> dict[str, Any]:
+        self.upsert_daily_snapshot(snapshot_date, snapshot)
+        self.upsert_job_history_from_snapshot(snapshot_date, snapshot)
+        return snapshot
+
+    def list_daily_snapshots(self, start_date: str | None = None, end_date: str | None = None) -> list[dict[str, Any]]:
+        snapshots = list(self.load()["daily_snapshots"].values())
+        if start_date is not None:
+            snapshots = [item for item in snapshots if str(item.get("date") or "") >= start_date]
+        if end_date is not None:
+            snapshots = [item for item in snapshots if str(item.get("date") or "") <= end_date]
+        return sorted(snapshots, key=lambda item: str(item.get("date") or ""))
+
+    def save_weekly_summary(self, week_id: str, summary: dict[str, Any]) -> dict[str, Any]:
+        state = self.load()
+        state["weekly_summaries"][week_id] = summary
+        self.save(state)
+        return summary

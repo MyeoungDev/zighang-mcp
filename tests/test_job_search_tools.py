@@ -1,8 +1,10 @@
 import json
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from src.config.settings import Settings
 from src.mcp.server import build_server
 from src.mcp.tools import jobs
 from src.zighang.models import JobDetail
@@ -32,6 +34,23 @@ class JobSearchToolTests(unittest.TestCase):
         self.assertEqual(filters["sort"], "latest")
         self.assertEqual(filters["size"], 20)
         self.assertEqual(result["jobs"], [])
+
+    def test_search_jobs_accepts_date_only_filters(self):
+        with patch("src.mcp.tools.jobs._client") as client_factory:
+            client = client_factory.return_value
+            client.search_jobs.return_value.to_dict.return_value = {"content": []}
+            client.search_jobs.return_value.content = []
+
+            jobs.search_jobs(
+                start_date="2026-06-02",
+                end_date="2026-06-02",
+                sort="latest",
+                size=20,
+            )
+
+        filters = client.search_jobs.call_args.kwargs
+        self.assertEqual(filters["start_date"], "2026-06-02T00:00:00")
+        self.assertEqual(filters["end_date"], "2026-06-02T23:59:59")
 
     def test_search_jobs_posted_on_builds_seoul_day_range(self):
         with patch("src.mcp.tools.jobs.search_jobs", return_value={"jobs": []}) as search_mock:
@@ -78,6 +97,12 @@ class JobSearchToolTests(unittest.TestCase):
         self.assertIn("search_latest_it_jobs", tool_manager._tools)
         self.assertIn("search_today_it_jobs", tool_manager._tools)
         self.assertIn("search_latest_jobs_for_me", tool_manager._tools)
+        self.assertIn("search_today_jobs_for_me", tool_manager._tools)
+        self.assertIn("daily_job_digest_for_me", tool_manager._tools)
+        self.assertIn("get_digest_history", tool_manager._tools)
+        self.assertIn("get_weekly_job_summary", tool_manager._tools)
+        self.assertIn("get_job_market_trends", tool_manager._tools)
+        self.assertIn("get_resume_gap_analysis", tool_manager._tools)
         self.assertIn("update_user_preferences_from_text", tool_manager._tools)
 
     def test_recommend_jobs_limits_detail_fetches(self):
@@ -85,25 +110,44 @@ class JobSearchToolTests(unittest.TestCase):
         summary = JobDetail.from_api(detail_data).to_dict()
         second = {**summary, "id": "job-2", "title": "Summary only backend"}
 
-        with (
-            patch("src.mcp.tools.jobs.search_jobs", return_value={"jobs": [summary, second]}),
-            patch("src.mcp.tools.jobs._profile_or_default", return_value={"skills": ["Spring Boot"], "keywords": [], "projects": []}),
-            patch("src.mcp.tools.jobs._store") as store_factory,
-            patch("src.mcp.tools.jobs._client") as client_factory,
-        ):
-            store = store_factory.return_value
-            store.get_user_preferences.return_value = {}
-            store.list_saved_jobs.return_value = []
-            client = client_factory.return_value
-            client.get_job_detail.return_value = JobDetail.from_api(detail_data)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings = Settings(data_dir=Path(temp_dir), reports_dir=Path(temp_dir) / "reports")
+            with (
+                patch("src.mcp.tools.jobs.load_settings", return_value=settings),
+                patch("src.mcp.tools.jobs.search_jobs", return_value={"jobs": [summary, second]}),
+                patch("src.mcp.tools.jobs._profile_or_default", return_value={"skills": ["Spring Boot"], "keywords": [], "projects": []}),
+                patch("src.mcp.tools.jobs._client") as client_factory,
+            ):
+                client = client_factory.return_value
+                client.get_job_detail.return_value = JobDetail.from_api(detail_data)
 
-            result = jobs.recommend_jobs(limit=2, max_detail_fetch=1)
+                result = jobs.recommend_jobs(limit=2, max_detail_fetch=1)
 
         self.assertEqual(result["detail_fetch_count"], 1)
         client.get_job_detail.assert_called_once_with("job-1")
         self.assertEqual(len(result["recommendations"]), 2)
         self.assertEqual(sum(1 for item in result["recommendations"] if item["detail_fetched"]), 1)
         self.assertTrue(all("matched_signals" in item for item in result["recommendations"]))
+
+    def test_get_job_detail_uses_cache_until_refresh(self):
+        detail_data = json.loads((FIXTURES / "job_detail.json").read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            settings = Settings(data_dir=Path(temp_dir), reports_dir=Path(temp_dir) / "reports")
+            with (
+                patch("src.mcp.tools.jobs.load_settings", return_value=settings),
+                patch("src.mcp.tools.jobs._client") as client_factory,
+            ):
+                client = client_factory.return_value
+                client.get_job_detail.return_value = JobDetail.from_api(detail_data)
+
+                first = jobs.get_job_detail("job-1")
+                second = jobs.get_job_detail("job-1")
+                refreshed = jobs.get_job_detail("job-1", refresh=True)
+
+        self.assertFalse(first["cache"]["cache_hit"])
+        self.assertTrue(second["cache"]["cache_hit"])
+        self.assertFalse(refreshed["cache"]["cache_hit"])
+        self.assertEqual(client.get_job_detail.call_count, 2)
 
     def test_latest_it_jobs_applies_it_category_and_internship_exclusions(self):
         with (
@@ -142,6 +186,38 @@ class JobSearchToolTests(unittest.TestCase):
         self.assertEqual(filters["employment_types"], ["정규직"])
         self.assertEqual(filters["exclude_keywords"], ["인턴"])
         self.assertEqual(result["preferences"], preferences)
+
+    def test_today_jobs_for_me_uses_stored_preferences_and_today_range(self):
+        preferences = {
+            "preferred_job_categories": ["IT_개발"],
+            "preferred_job_subcategories": ["서버_백엔드"],
+            "preferred_regions": ["서울", "경기"],
+            "preferred_employment_types": ["정규직"],
+            "excluded_keywords": ["프론트엔드"],
+            "default_exclude_internships": True,
+        }
+
+        with (
+            patch("src.mcp.tools.jobs._preferences", return_value=preferences),
+            patch("src.mcp.tools.jobs._posted_date_range", return_value=("2026-06-02", "2026-06-02T00:00:00", "2026-06-02T23:59:59")),
+            patch("src.mcp.tools.jobs.search_jobs_posted_on", return_value={"jobs": []}) as search_mock,
+            patch("src.mcp.tools.jobs.search_pinned_jobs", return_value={"jobs": []}) as pinned_mock,
+        ):
+            result = jobs.search_today_jobs_for_me(size=20)
+
+        filters = search_mock.call_args.kwargs
+        self.assertEqual(filters["posted_date"], "2026-06-02")
+        self.assertEqual(filters["job_categories"], ["IT_개발"])
+        self.assertEqual(filters["job_subcategories"], ["서버_백엔드"])
+        self.assertEqual(filters["regions"], ["서울", "경기"])
+        self.assertEqual(filters["employment_types"], ["정규직"])
+        self.assertIn("프론트엔드", filters["exclude_keywords"])
+        self.assertIn("인턴", filters["exclude_keywords"])
+        pinned_filters = pinned_mock.call_args.kwargs
+        self.assertEqual(pinned_filters["start_date"], "2026-06-02T00:00:00")
+        self.assertEqual(pinned_filters["end_date"], "2026-06-02T23:59:59")
+        self.assertEqual(result["intent"], "today_jobs_for_me")
+        self.assertEqual(result["posted_date"], "2026-06-02")
 
 
 if __name__ == "__main__":

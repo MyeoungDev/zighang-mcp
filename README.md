@@ -4,19 +4,137 @@
 [![MCP](https://img.shields.io/badge/MCP-FastMCP-green.svg)](https://modelcontextprotocol.io/)
 [![Tests](https://img.shields.io/badge/tests-unittest-lightgrey.svg)](#testing)
 
-개인 이력서와 포트폴리오를 기준으로 Zighang 채용공고를 검색, 추천, 저장하고 일일 digest를 생성하는 MCP 서버입니다.
+개인 이력서와 포트폴리오를 기준으로 Zighang 채용공고를 검색, 추천, 저장하고 일일/주간 리포트로 분석할 수 있게 해주는 MCP 서버입니다.
 
-이 프로젝트는 “매일 볼 만한 공고를 MCP 클라이언트나 Agent가 호출해서 읽고 답변할 수 있게 만드는 것”에 초점을 둡니다. 채용공고 검색, 추천 점수화, 필터 프로필, 로컬 상태 저장, markdown/webhook/email digest 전송을 모두 로컬 중심으로 제공합니다.
+핵심 목표는 단순 검색이 아니라, Agent에게 아래 흐름을 맡길 수 있게 만드는 것입니다.
 
-## Highlights
+```text
+내 조건 설정
+-> 오늘 맞는 공고 검색/추천
+-> 매일 digest 저장 및 알림
+-> 관심/제외/지원 상태 기록
+-> 주간 공고 트렌드와 이력서 보완점 분석
+```
 
-- Public Zighang 공고 목록, 상세, 필터 메타 API client
-- MCP tools: 검색, 상세 조회, 추천, 매칭 설명, 필터 프로필, 상태 저장, digest 생성
-- 로컬 이력서/포트폴리오 분석: markdown/text/PDF 텍스트 추출 지원
-- 결정적 추천 점수화: 기술 키워드, 프로젝트, 상태값 기반
-- 일일 digest 생성: `reports/daily/YYYY-MM-DD.md`
-- 알림 채널: `markdown`, `console`, `webhook`, `email`
-- fixture 기반 unit test와 opt-in live API smoke test 분리
+## What You Can Ask
+
+MCP 클라이언트나 Agent에서는 자연어로 이렇게 요청하는 것을 목표로 합니다.
+
+| 하고 싶은 일 | 예시 요청 | 주로 쓰는 MCP tool |
+| --- | --- | --- |
+| 내 조건 저장 | "나는 백엔드/데이터 플랫폼, 서울 정규직, 인턴 제외를 원해" | `update_user_preferences_from_text` |
+| 내 조건으로 오늘 공고 보기 | "내 조건으로 오늘 올라온 공고 보여줘" | `search_today_jobs_for_me` |
+| 이력서 기준 추천 | "내 이력 기준으로 맞는 공고 추천해줘" | `recommend_jobs` |
+| 오늘자 리포트 생성 | "직행 오늘자 보고서 만들어줘" | `daily_job_digest_for_me` |
+| 매일 알림용 digest | "저장된 필터 기준으로 daily digest 실행해줘" | `daily_job_digest` |
+| 특정 공고 분석 | "이 공고가 내 이력서와 왜 맞는지 설명해줘" | `explain_job_match` |
+| 공고 상태 기록 | "이 공고는 관심 있음으로 표시해줘" | `track_job_status` |
+| 주간 분석 | "이번 주 공고 흐름 요약해줘" | `get_weekly_job_summary` |
+| 시장 트렌드 | "최근 백엔드 공고 키워드 변화 알려줘" | `get_job_market_trends` |
+| 이력서 보완점 | "최근 공고 기준으로 내 이력서 보완점 알려줘" | `get_resume_gap_analysis` |
+
+## Recommended Workflow
+
+### 1. 처음 한 번: 이력서와 선호조건 준비
+
+이력서와 포트폴리오 파일을 로컬에 둡니다.
+
+```text
+resumes/resume.md
+portfolios/portfolio.md
+```
+
+MCP에서 선호조건을 저장합니다.
+
+```text
+나는 백엔드, 데이터 플랫폼, 서울/경기 정규직 위주로 보고 싶어.
+Spring Boot, Airflow, Kubernetes 경험을 살리고 싶고 인턴은 제외해줘.
+```
+
+이 요청은 `user_preferences`에 저장되고 이후 검색, 추천, digest에 반영됩니다.
+
+### 2. 매일: 오늘 맞는 공고 확인
+
+즉시 확인할 때:
+
+```text
+내 조건으로 오늘 올라온 공고 중 괜찮은 것만 보여줘.
+```
+
+리포트로 남길 때:
+
+```text
+직행 오늘자 보고서 만들어줘. 상위 5개만 요약해줘.
+```
+
+생성된 digest는 기본적으로 아래 파일에 저장됩니다.
+
+```text
+reports/daily/YYYY-MM-DD.md
+```
+
+### 3. 자동 운영: 매일 정해진 시간에 digest 실행
+
+MCP 서버 자체에는 scheduler가 없습니다. 자동 실행은 cron, launchd, GitHub Actions 같은 외부 scheduler가 `zighang-digest`를 실행하는 방식으로 구성합니다.
+
+```bash
+.venv/bin/zighang-digest --resume-profile-id default --limit-per-profile 5 --top-n 5
+```
+
+예: 매일 오전 8시 30분 cron 실행
+
+```cron
+30 8 * * * cd /absolute/path/to/zighang-mcp && .venv/bin/zighang-digest >> logs/digest.log 2>&1
+```
+
+알림은 `NOTIFICATION_CHANNELS`로 설정합니다.
+
+```bash
+NOTIFICATION_CHANNELS=markdown,telegram
+```
+
+지원 채널:
+
+- `markdown`: 파일 저장
+- `console`: stdout 출력
+- `webhook`: HTTP webhook 전송
+- `email`: SMTP email 전송
+- `telegram`: Telegram Bot API 전송
+- `discord`: Discord webhook 전송
+
+### 4. 선택 사항: 피드백으로 추천 품질 개선
+
+사용자가 매일 피드백을 남기지 않아도 중복 제거, 마감 관리, 주간 트렌드 분석은 가능합니다. 다만 관심/제외/지원 상태를 남기면 개인화 추천이 더 좋아집니다.
+
+```text
+이 공고는 관심 있음으로 표시해줘.
+이 공고는 제외해줘.
+이 공고는 지원 완료로 표시해줘.
+```
+
+저장 가능한 상태:
+
+- `viewed`
+- `bookmarked`
+- `interested`
+- `applied`
+- `rejected`
+- `ignored`
+
+이 상태는 Zighang 계정 북마크가 아니라 MCP 로컬 상태입니다.
+
+### 5. 주간: 누적 리포트 분석
+
+매일 digest가 쌓이면 Agent에게 이런 분석을 요청할 수 있습니다.
+
+```text
+이번 주 공고 요약해줘.
+최근 공고에서 많이 등장한 기술 키워드 알려줘.
+지난주 대비 늘어난 직무/회사/지역을 알려줘.
+내 이력서 기준으로 반복적으로 부족하게 보이는 부분 알려줘.
+```
+
+이 분석은 markdown을 다시 파싱하지 않고, digest 실행 시 함께 저장되는 구조화 snapshot을 사용합니다.
 
 ## Quick Start
 
@@ -39,35 +157,6 @@ zighang-mcp
 .venv/bin/python -m src.mcp.server
 ```
 
-## Configuration
-
-```bash
-cp .env.example .env
-```
-
-주요 환경변수:
-
-| Variable | Default | Description |
-| --- | --- | --- |
-| `ZIGHANG_BASE_URL` | `https://api.zighang.com/api` | Zighang API base URL |
-| `ZIGHANG_AUTH_TOKEN` | empty | 선택. 사용자가 직접 제공한 auth token |
-| `ZIGHANG_COOKIE` | empty | 선택. 사용자가 직접 제공한 cookie |
-| `DEFAULT_PAGE_SIZE` | `20` | 기본 공고 목록 page size |
-| `REQUEST_DELAY_MS` | `300` | API 요청 간격 |
-| `RESUME_PATH` | `resumes/resume.md` | 기본 이력서 파일 |
-| `PORTFOLIO_PATH` | `portfolios/portfolio.md` | 기본 포트폴리오 파일 |
-| `NOTIFICATION_CHANNELS` | `markdown` | `markdown`, `console`, `webhook`, `email`, `telegram`, `discord`. 여러 채널은 콤마로 구분 |
-| `WEBHOOK_URL` | empty | webhook digest 수신 URL |
-| `EMAIL_HOST` | empty | SMTP host |
-| `EMAIL_PORT` | `587` | SMTP port. STARTTLS 기준 |
-| `EMAIL_USERNAME` | empty | SMTP username. 발신자와 수신자로도 사용 |
-| `EMAIL_PASSWORD` | empty | SMTP password 또는 앱 비밀번호 |
-| `TELEGRAM_BOT_TOKEN` | empty | Telegram bot token |
-| `TELEGRAM_CHAT_ID` | empty | Telegram message 수신 chat ID |
-| `DISCORD_WEBHOOK_URL` | empty | Discord channel webhook URL |
-
-민감한 이력서, 포트폴리오, 캐시, 리포트는 기본적으로 git ignore 됩니다.
-
 ## MCP Client Setup
 
 MCP 클라이언트 설정 예:
@@ -88,11 +177,96 @@ MCP 클라이언트 설정 예:
 }
 ```
 
-상대 경로는 실행 위치에 따라 달라질 수 있으므로 운영용 MCP client 설정에는 절대 경로를 권장합니다.
+운영용 설정에는 상대 경로보다 절대 경로를 권장합니다.
+
+## Main MCP Tools
+
+### Personal Search And Recommendation
+
+| Tool | Purpose |
+| --- | --- |
+| `update_user_preferences_from_text` | 자연어에서 직무, 지역, 고용형태, 기술, 제외조건 추출 및 저장 |
+| `get_user_preferences` | 저장된 사용자 선호조건 조회 |
+| `search_latest_jobs_for_me` | 저장된 선호조건 기준 최신 공고 검색 |
+| `search_today_jobs_for_me` | 저장된 선호조건 기준 오늘 등록 공고 검색 |
+| `recommend_jobs` | 이력서/포트폴리오/선호조건 기반 추천 점수화 |
+| `explain_job_match` | 특정 공고와 이력서의 매칭 이유 설명 |
+
+### Digest And Analytics
+
+| Tool | Purpose |
+| --- | --- |
+| `daily_job_digest_for_me` | 저장된 선호조건 기준 오늘자 digest 생성 |
+| `daily_job_digest` | 활성 필터 프로필 기준 digest 생성 및 알림 전송 |
+| `get_digest_history` | 최근 일일 digest snapshot 조회 |
+| `get_weekly_job_summary` | 누적 snapshot 기반 주간 요약 |
+| `get_job_market_trends` | 최근 기간과 이전 기간의 키워드/회사/지역/직무 변화 비교 |
+| `get_resume_gap_analysis` | 반복 risk/gap 신호 기반 이력서 보완 분석 |
+
+### Filters, Details, And Tracking
+
+| Tool | Purpose |
+| --- | --- |
+| `search_jobs` | 명시적 필터 기반 저수준 공고 검색 |
+| `search_jobs_posted_on` | 특정 날짜 등록 공고 검색 |
+| `search_latest_it_jobs` | 개인화 없는 최신 IT_개발 공고 검색 |
+| `search_today_it_jobs` | 개인화 없는 오늘 등록 IT_개발 공고 검색 |
+| `search_pinned_jobs` | Zighang pinned 공고 검색 |
+| `get_job_detail` | 공고 상세 조회. 기본적으로 로컬 상세 캐시 사용 |
+| `save_filter_profile` | digest용 필터 프로필 저장 |
+| `list_filter_profiles` | 필터 프로필 목록 조회 |
+| `update_filter_profile` | 필터 프로필 수정 |
+| `delete_filter_profile` | 필터 프로필 삭제 |
+| `track_job_status` | 공고 상태를 MCP 로컬 상태로 저장 |
+| `list_tracked_jobs` | MCP 로컬 추적 공고 조회 |
+
+상세 입력/출력은 [MCP Tool Specification](docs/mcp-tools.md)을 참고하세요.
+
+## Digest Output
+
+Digest markdown은 사용자가 바로 판단할 수 있도록 아래 섹션으로 구성됩니다.
+
+- `오늘의 최우선 공고`
+- `새로 발견된 고득점 공고`
+- `마감 임박`
+- `관심 공고와 유사`
+- `확인 필요`
+- `필터별 추천`
+
+각 공고에는 점수, 회사, 제목, 조건, 직무/키워드, 매칭 신호, 확인 필요 사항, 지원 URL이 포함됩니다.
+
+## Configuration
+
+```bash
+cp .env.example .env
+```
+
+주요 환경변수:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `ZIGHANG_BASE_URL` | `https://api.zighang.com/api` | Zighang API base URL |
+| `ZIGHANG_AUTH_TOKEN` | empty | 선택. 사용자가 직접 제공한 auth token |
+| `ZIGHANG_COOKIE` | empty | 선택. 사용자가 직접 제공한 cookie |
+| `DEFAULT_PAGE_SIZE` | `20` | 기본 공고 목록 page size |
+| `REQUEST_DELAY_MS` | `300` | API 요청 간격 |
+| `RESUME_PATH` | `resumes/resume.md` | 기본 이력서 파일 |
+| `PORTFOLIO_PATH` | `portfolios/portfolio.md` | 기본 포트폴리오 파일 |
+| `NOTIFICATION_CHANNELS` | `markdown` | `markdown`, `console`, `webhook`, `email`, `telegram`, `discord` |
+| `WEBHOOK_URL` | empty | webhook digest 수신 URL |
+| `EMAIL_HOST` | empty | SMTP host |
+| `EMAIL_PORT` | `587` | SMTP port. STARTTLS 기준 |
+| `EMAIL_USERNAME` | empty | SMTP username. 발신자와 수신자로도 사용 |
+| `EMAIL_PASSWORD` | empty | SMTP password 또는 앱 비밀번호 |
+| `TELEGRAM_BOT_TOKEN` | empty | Telegram bot token |
+| `TELEGRAM_CHAT_ID` | empty | Telegram message 수신 chat ID |
+| `DISCORD_WEBHOOK_URL` | empty | Discord channel webhook URL |
+| `JOB_DETAIL_CACHE_TTL_HOURS` | `12` | 공고 상세 캐시 TTL |
+| `JOB_DETAIL_CACHE_MAX_ENTRIES` | `500` | 로컬에 보관할 공고 상세 캐시 최대 개수 |
 
 ## Resume And Portfolio Files
 
-기본 파일 위치:
+지원 파일:
 
 - `resumes/resume.md`
 - `resumes/resume.pdf`
@@ -105,130 +279,15 @@ MCP 클라이언트 설정 예:
 - markdown/text 파일은 UTF-8 텍스트로 직접 읽습니다.
 - 텍스트 기반 PDF는 `pypdf`로 페이지 텍스트를 추출합니다.
 - 로컬 HTML 파일과 Notion HTML export는 화면에 보이는 텍스트를 추출합니다.
-- `script`, `style`, `noscript` 내용은 분석에서 제외합니다.
-- 스캔 PDF나 이미지 기반 PDF처럼 텍스트가 거의 추출되지 않는 파일은 OCR 필요 오류를 반환합니다.
-- OCR은 아직 포함하지 않습니다. 필요한 경우 macOS Vision OCR, Tesseract, 외부 OCR API 같은 별도 단계가 필요합니다.
+- 스캔 PDF나 이미지 기반 PDF는 OCR이 필요하며 현재 내장 OCR은 없습니다.
 - 웹 URL 직접 fetch, private Notion API 접근, 인증 필요한 Notion page 분석은 아직 포함하지 않습니다.
 
-## Notification Channels
+## Scheduler Runner
 
-`daily_job_digest`는 먼저 `reports/daily/YYYY-MM-DD.md`를 저장하고, `NOTIFICATION_CHANNELS`에 따라 추가 전송을 수행합니다.
-
-여러 채널을 동시에 쓰려면 콤마로 구분합니다.
-
-```bash
-NOTIFICATION_CHANNELS=markdown,email,telegram,discord
-```
-
-다중 채널은 지정한 순서대로 전송됩니다. 중간 채널 전송이 실패하면 MCP tool 호출은 실패하고 이후 채널은 실행되지 않습니다.
-
-### Markdown
-
-```bash
-NOTIFICATION_CHANNELS=markdown
-```
-
-기본값입니다. digest markdown 파일만 저장합니다.
-
-### Console
-
-```bash
-NOTIFICATION_CHANNELS=console
-```
-
-digest markdown을 stdout으로 출력합니다. 로컬 디버깅이나 수동 실행에 유용합니다.
-
-### Webhook
-
-```bash
-NOTIFICATION_CHANNELS=webhook
-WEBHOOK_URL=https://example.com/webhook
-```
-
-전송 payload:
-
-```json
-{
-  "text": "# Zighang Daily Job Digest - YYYY-MM-DD\n..."
-}
-```
-
-HTTP 2xx가 아닌 응답이나 네트워크 오류는 MCP tool 호출 실패로 드러납니다.
-
-### Email
-
-```bash
-NOTIFICATION_CHANNELS=email
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USERNAME=your-account@gmail.com
-EMAIL_PASSWORD=your-app-password
-```
-
-동작:
-
-- SMTP STARTTLS를 사용합니다.
-- `EMAIL_USERNAME`과 `EMAIL_PASSWORD`로 로그인합니다.
-- `EMAIL_USERNAME`을 발신자와 수신자로 모두 사용합니다.
-- 메일 제목은 `Zighang Daily Job Digest`입니다.
-- 본문은 markdown digest 원문을 plain text로 보냅니다.
-
-Gmail 같은 서비스는 일반 계정 비밀번호가 아니라 앱 비밀번호 또는 별도 SMTP 정책 설정이 필요할 수 있습니다.
-
-### Telegram
-
-```bash
-NOTIFICATION_CHANNELS=telegram
-TELEGRAM_BOT_TOKEN=123456:bot-token
-TELEGRAM_CHAT_ID=123456789
-```
-
-Telegram Bot API의 `sendMessage`를 호출해 digest markdown 원문을 보냅니다.
-
-### Discord
-
-```bash
-NOTIFICATION_CHANNELS=discord
-DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
-```
-
-Discord webhook에 digest markdown 원문을 `content`로 보냅니다.
-
-## Daily Operation
-
-MCP 서버는 자체 scheduler를 포함하지 않습니다. 자동 digest 운영에는 cron, launchd, GitHub Actions 같은 외부 scheduler가 `zighang-digest` runner를 원하는 시간에 실행하도록 설정하세요.
-
-### Agent/MCP 호출 모델
-
-일반적인 사용 방식은 MCP client나 Agent가 `daily_job_digest` tool을 호출하고, 반환된 `markdown` 또는 `report_path`를 읽어 사용자에게 요약하는 것입니다.
-
-예:
-
-```text
-직행 MCP의 daily_job_digest를 실행해줘. resume_profile_id는 default, top_n은 5로 해줘.
-```
-
-digest는 저장된 필터 프로필을 기준으로 추천 공고를 수집합니다. 먼저 `save_filter_profile`로 알림 대상 필터를 저장하세요.
-
-예:
-
-```text
-직행 MCP에 백엔드 필터 프로필을 저장해줘.
-profile_id는 backend, 이름은 Backend, notifications_enabled는 true로 해줘.
-필터는 IT_개발 직군 중심으로 설정해줘.
-```
-
-활성 필터 프로필이 없으면 digest는 공고 추천을 시도하지 않고 `setup_required=true`와 설정 안내 markdown을 반환합니다.
-
-### Scheduler runner
+`zighang-digest`는 한 번 실행하고 종료되는 자동화용 runner입니다.
 
 ```bash
 .venv/bin/zighang-digest
-```
-
-옵션:
-
-```bash
 .venv/bin/zighang-digest --resume-profile-id default --limit-per-profile 5 --top-n 5
 .venv/bin/zighang-digest --include-seen
 .venv/bin/zighang-digest --dry-run
@@ -238,144 +297,27 @@ profile_id는 backend, 이름은 Backend, notifications_enabled는 true로 해�
 기본 출력:
 
 ```text
+started_at=YYYY-MM-DDTHH:MM:SS+09:00
+finished_at=YYYY-MM-DDTHH:MM:SS+09:00
+duration_seconds=1.234
 report_path=reports/daily/YYYY-MM-DD.md
-notification_channel=markdown,email
-notification_result=markdown:reports/daily/YYYY-MM-DD.md,email:email
+notification_channel=markdown
+notification_result=reports/daily/YYYY-MM-DD.md
 ```
 
-`--dry-run`은 digest report 생성까지 확인하되 webhook/email 전송은 하지 않습니다. cron이나 launchd에 올리기 전에 설정과 파일 경로를 점검할 때 사용하세요.
-
-### cron 예시
-
-매일 오전 9시에 자동 digest를 만드는 예시:
-
-```cron
-0 9 * * * cd /absolute/path/to/zighang-mcp && .venv/bin/zighang-digest >> logs/digest.log 2>&1
-```
-
-`zighang-digest`는 실행 위치의 `.env`를 자동으로 읽습니다. OS 환경변수가 이미 설정되어 있으면 OS 환경변수가 `.env`보다 우선합니다.
-
-### macOS launchd 예시
-
-운영에서는 launchd plist에서 repo 경로를 working directory로 지정하고, `ProgramArguments`에 `.venv/bin/zighang-digest`를 둡니다. `StandardOutPath`와 `StandardErrorPath`를 지정하면 실행 로그를 남길 수 있습니다.
-
-### GitHub Actions 예시
-
-GitHub Actions에서는 scheduled workflow에서 `.venv/bin/zighang-digest --json`을 실행할 수 있습니다. 이력서와 SMTP/webhook secret은 repository secrets로 다뤄야 하며, 개인 데이터가 로그에 출력되지 않도록 주의해야 합니다.
-
-## Tools
-
-대표 MCP tools:
-
-| Tool | Purpose |
-| --- | --- |
-| `recommend_jobs` | 이력서/필터/선호값 기반 개인화 추천 |
-| `search_latest_jobs_for_me` | 저장된 선호값 기반 최신 공고 검색 |
-| `search_latest_it_jobs` | 개인화 없는 최신 IT_개발 공고 검색 |
-| `search_today_it_jobs` | 오늘 등록된 IT_개발 공고 검색 |
-| `search_jobs_posted_on` | 특정 날짜에 등록된 공고 검색 |
-| `search_jobs` | 명시적 필터 기반 저수준 공고 검색 |
-| `search_pinned_jobs` | 직행 pinned 공고 검색 |
-| `get_job_detail` | 공고 상세 조회 |
-| `list_filter_options` | 필터 옵션 조회 |
-| `explain_job_match` | 특정 공고와 이력서의 매칭 설명 |
-| `save_filter_profile` | 필터 프로필 저장 |
-| `list_filter_profiles` | 저장된 필터 프로필 목록 |
-| `update_filter_profile` | 필터 프로필 수정 |
-| `delete_filter_profile` | 필터 프로필 삭제 |
-| `daily_job_digest` | 활성 필터 기반 일일 digest 생성 및 알림 전송 |
-| `track_job_status` | MCP 로컬 공고 상태 저장 |
-| `list_tracked_jobs` | MCP 로컬 추적 공고 조회 |
-| `mark_job_status` | `track_job_status` 호환 alias |
-| `list_saved_jobs` | `list_tracked_jobs` 호환 alias |
-| `get_user_preferences` | 로컬 사용자 선호값 조회 |
-| `update_user_preferences` | 로컬 사용자 선호값 수정 |
-| `update_user_preferences_from_text` | 자연어 설명에서 로컬 사용자 선호값 추출/저장 |
-| `clear_user_preferences` | 로컬 사용자 선호값 초기화 |
-| `load_resume_profile` | 파일에서 이력서 프로필 로드 |
-| `update_resume_profile` | inline text 또는 path로 이력서 프로필 갱신 |
-| `analyze_resume_profile` | 이력서 프로필 분석 |
-| `extract_skills_from_resume` | 기술 키워드 추출 |
-| `extract_projects_from_portfolio` | 프로젝트 라인 추출 |
-
-상세 입력/출력은 [MCP Tool Specification](docs/mcp-tools.md)을 참고하세요.
-
-### Agent tool 선택 기준
-
-| 사용자 요청 | 우선 사용할 tool |
-| --- | --- |
-| "나에게 맞는 공고", "내 이력 기준 추천" | `recommend_jobs` |
-| "내 선호도 기준 최신 공고" | `search_latest_jobs_for_me` |
-| "직행 최신 IT 공고" | `search_latest_it_jobs` |
-| "오늘 올라온 IT 공고" | `search_today_it_jobs` |
-| "2026-05-20에 올라온 공고" | `search_jobs_posted_on` |
-| "Java, 서울, 정규직으로 검색" | `search_jobs` |
-| "나는 백엔드/데이터 플랫폼, 서울 정규직, 인턴 제외를 원해" | `update_user_preferences_from_text` |
-
-`recommend_jobs`는 `score_breakdown`, `matched_signals`, `risk_flags`, `evidence_snippets`, `detail_fetched`를 함께 반환합니다. Agent는 이 구조화 근거를 사용해 추가 상세 조회를 줄이고 최종 설명을 만들 수 있습니다.
-
-`list_saved_jobs`는 기존 호환 alias입니다. 직행 계정의 관심공고가 아니라 MCP 로컬 추적 상태를 읽으므로 새 호출에서는 `list_tracked_jobs`를 사용하세요.
-
-## Usage Examples
-
-### 필터 기반 검색
-
-```json
-{
-  "keyword": "Java",
-  "job_categories": ["IT_개발"],
-  "job_subcategories": ["서버_백엔드"],
-  "regions": ["서울"],
-  "career_min": 2,
-  "career_max": 5,
-  "employment_types": ["정규직"],
-  "sort": "latest",
-  "page": 0,
-  "size": 10
-}
-```
-
-### 필터 프로필 저장
-
-```json
-{
-  "profile_id": "backend-seoul",
-  "name": "백엔드 / 서울 / 2~5년차",
-  "filters": {
-    "job_categories": ["IT_개발"],
-    "job_subcategories": ["서버_백엔드"],
-    "regions": ["서울"],
-    "career_min": 2,
-    "career_max": 5,
-    "employment_types": ["정규직"],
-    "sort": "latest"
-  },
-  "notifications_enabled": true
-}
-```
-
-### Digest 생성
-
-```json
-{
-  "resume_profile_id": "default",
-  "limit_per_profile": 5,
-  "top_n": 5,
-  "exclude_seen": true
-}
-```
-
-반환값에는 `report_path`, `markdown`, `profiles`, `notification_channel`, `notification_result`가 포함됩니다.
+`--dry-run`은 digest report 생성까지 확인하되 webhook/email/telegram/discord 전송은 하지 않습니다.
 
 ## Data Layout
 
 | Path | Purpose |
 | --- | --- |
-| `data/cache/state.json` | 필터 프로필, 이력서 프로필, 공고 상태 저장 |
+| `data/cache/state.json` | 필터 프로필, 사용자 선호조건, 공고 상태, 상세 캐시, digest snapshot 저장 |
 | `reports/daily/YYYY-MM-DD.md` | 일일 digest markdown |
 | `resumes/` | 개인 이력서 파일 |
 | `portfolios/` | 개인 포트폴리오 파일 |
 | `tests/fixtures/` | unit test fixture |
+
+민감한 이력서, 포트폴리오, 캐시, 리포트는 기본적으로 git ignore 됩니다.
 
 ## Testing
 
@@ -403,26 +345,19 @@ Live notification smoke test도 opt-in입니다. 실제 webhook 또는 SMTP 설�
 RUN_LIVE_NOTIFICATION_TESTS=1 .venv/bin/python -m unittest tests.test_smoke_live_notifications
 ```
 
-개별 채널만 검증하려면 unittest 테스트 이름을 지정하세요.
-
-```bash
-RUN_LIVE_NOTIFICATION_TESTS=1 .venv/bin/python -m unittest tests.test_smoke_live_notifications.LiveNotificationSmokeTests.test_live_webhook_delivery
-RUN_LIVE_NOTIFICATION_TESTS=1 .venv/bin/python -m unittest tests.test_smoke_live_notifications.LiveNotificationSmokeTests.test_live_email_delivery
-```
-
 ## Documentation
 
-- [Zighang API notes](docs/zighang-api.md)
-- [Zighang recruitment API notes](docs/zighang-recruitment-api.md)
 - [MCP Tool Specification](docs/mcp-tools.md)
 - [Recommendation Logic](docs/recommendation-logic.md)
+- [Zighang API notes](docs/zighang-api.md)
+- [Zighang recruitment API notes](docs/zighang-recruitment-api.md)
 - [Implementation Plan](docs/implementation-plan.md)
 
 ## Security And Privacy
 
-- 개인 이력서, 포트폴리오, 캐시, 리포트는 git ignore 대상입니다.
+- 개인 이력서, 포트폴리오, 캐시, 리포트는 repository에 커밋하지 마세요.
 - `ZIGHANG_AUTH_TOKEN`, `ZIGHANG_COOKIE`, `EMAIL_PASSWORD`, webhook URL은 repository에 커밋하지 마세요.
-- webhook/email 전송 시 digest 본문에 개인 이력서 기반 추천 정보가 포함될 수 있습니다.
+- webhook/email/telegram/discord 전송 시 digest 본문에 개인 이력서 기반 추천 정보가 포함될 수 있습니다.
 - 외부 scheduler나 CI를 사용할 때 secret 출력과 artifact 업로드 설정을 확인하세요.
 
 ## Project Status

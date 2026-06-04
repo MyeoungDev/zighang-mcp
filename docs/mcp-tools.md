@@ -6,6 +6,11 @@
 | --- | --- |
 | "나에게 맞는 공고", "내 이력 기준 추천", "이를 토대로 맞는 공고" | `recommend_jobs` |
 | "내 선호도 기준 최신 공고" | `search_latest_jobs_for_me` |
+| "내 조건으로 오늘 올라온 공고" | `search_today_jobs_for_me` |
+| "직행 오늘자 보고서", "내 조건 기준 오늘 보고서" | `daily_job_digest_for_me` |
+| "이번 주 공고 요약", "주간 공고 분석" | `get_weekly_job_summary` |
+| "최근 공고 트렌드", "기술 키워드 변화" | `get_job_market_trends` |
+| "이력서 보완점", "반복 갭 분석" | `get_resume_gap_analysis` |
 | "직행 최신 IT 공고" | `search_latest_it_jobs` |
 | "오늘 올라온 IT 공고" | `search_today_it_jobs` |
 | Specific posted date search | `search_jobs_posted_on` |
@@ -101,14 +106,20 @@ This maps to `GET /recruitments/pinned`. The live site does not send pagination 
 - `search_latest_it_jobs(size, include_pinned, exclude_internships)`: latest `IT_개발` postings.
 - `search_today_it_jobs(size, include_pinned, exclude_internships)`: today's `IT_개발` postings in `Asia/Seoul`.
 - `search_latest_jobs_for_me(size, include_pinned)`: latest postings using stored user preferences.
+- `search_today_jobs_for_me(size, include_pinned)`: today's postings using stored user preferences in `Asia/Seoul`.
 
 These tools use local `user_preferences` defaults, including internship exclusion and excluded keywords/company names.
 
 ### `get_job_detail`
 
-Fetches one job detail by Zighang recruitment ID.
+Fetches one job detail by Zighang recruitment ID. Uses the local detail cache by default.
 
-Output includes normalized detail text, source/apply URL, status, company info, job categories, requirements summary, conditions, deadline, and original Zighang URL.
+Inputs:
+
+- `job_id`
+- `refresh`: defaults to `false`. When `true`, bypasses the local cache and refreshes from the public API.
+
+Output includes normalized detail text, source/apply URL, status, company info, job categories, requirements summary, conditions, deadline, original Zighang URL, and `cache` metadata.
 
 ### `list_filter_options`
 
@@ -133,13 +144,14 @@ Inputs:
 Output:
 
 - recommendation score
-- `score_breakdown` with base, resume, preference, deadline, saved-status, and penalty components
+- `score_breakdown` with base, resume, preference, deadline, saved-status, feedback, and penalty components
 - `matched_signals` from job categories, skills, keywords, regions, employment types, and deadline signals
 - `risk_flags` for career, preference mismatch, disliked terms, excluded companies, saved status, or deadline issues
 - `evidence_snippets` from title, keywords, categories, and detail text when fetched
 - `detail_fetched` showing whether the recommendation used detail text or summary-only data
 - reasons
 - preference reasons and warnings
+- feedback reasons and warnings from local `track_job_status` history
 - mismatch risks
 - resume highlights
 - pre-apply tips
@@ -199,6 +211,8 @@ Output:
 - `new_job_count`
 - `deadline_soon_count`
 - `excluded_existing_count`
+- `feedback_boosted_count`
+- `risk_flagged_count`
 - `digest_history`
 - `notification_channel`
 - `notification_result`
@@ -218,6 +232,38 @@ Notification channels:
 
 Schedulers should use the `zighang-digest` console script for direct one-shot digest runs. MCP clients and agents can call `daily_job_digest` directly when interactive tool orchestration is preferred.
 
+Digest markdown is organized into decision sections: top priority, newly found high-score jobs, deadline-soon jobs, jobs similar to previous interests, risk-review jobs, and per-filter recommendations.
+
+### `daily_job_digest_for_me`
+
+Generates today's digest directly from stored `user_preferences`, without requiring enabled filter profiles. This is the preferred tool for interactive prompts such as "직행 오늘자 보고서" or "내 조건 기준 오늘 올라온 공고 보고서".
+
+Inputs:
+
+- `resume_profile_id`
+- `limit`
+- `top_n`
+- `exclude_seen`
+- `send_notification`: defaults to `false`.
+- `only_new`
+- `include_tracked`
+- `include_pinned`
+- `max_detail_fetch`
+- `save_report`
+
+Output matches `daily_job_digest` and additionally includes `posted_date`, `preferences`, `applied_filters`, and `recommendation_meta`.
+
+### Digest Analytics Tools
+
+Daily digest runs store structured local snapshots alongside markdown reports. These tools read the snapshots; they do not parse historical markdown reports.
+
+- `get_digest_history(days=7)`: returns recent daily snapshots and counts.
+- `get_weekly_job_summary(week_start_date)`: summarizes the current week by default, including total jobs, high-score jobs, deadline-soon jobs, top keywords, companies, regions, job categories, risks, gap signals, and representative jobs.
+- `get_job_market_trends(days=7)`: compares the recent period with the previous period for keyword, company, region, and job-category changes.
+- `get_resume_gap_analysis(days=7, resume_profile_id="default")`: aggregates repeated risk, mismatch, pre-apply, and keyword signals for resume improvement analysis.
+
+If no structured snapshots exist yet, these tools return `insufficient_data=true` with empty analysis fields.
+
 ### `track_job_status`
 
 Stores local per-job state. This is MCP-local tracking, not a Zighang account bookmark.
@@ -231,6 +277,8 @@ Allowed statuses:
 - `applied`
 - `rejected`
 - `ignored`
+
+`interested`, `bookmarked`, `applied`, `ignored`, and `rejected` are used as local feedback signals by `recommend_jobs` when cached job detail is available for the tracked job.
 
 ### `list_tracked_jobs`
 

@@ -103,6 +103,23 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(settings.default_page_size, 9)
         self.assertEqual(settings.request_delay_ms, 700)
 
+    def test_load_settings_reads_job_detail_cache_settings(self):
+        keys = ["JOB_DETAIL_CACHE_TTL_HOURS", "JOB_DETAIL_CACHE_MAX_ENTRIES"]
+        old = {key: os.environ.get(key) for key in keys}
+        os.environ["JOB_DETAIL_CACHE_TTL_HOURS"] = "6"
+        os.environ["JOB_DETAIL_CACHE_MAX_ENTRIES"] = "25"
+        try:
+            settings = load_settings()
+        finally:
+            for key, value in old.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
+
+        self.assertEqual(settings.job_detail_cache_ttl_hours, 6)
+        self.assertEqual(settings.job_detail_cache_max_entries, 25)
+
 
 if __name__ == "__main__":
     unittest.main()

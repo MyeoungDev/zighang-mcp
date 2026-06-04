@@ -38,6 +38,8 @@ class Settings:
     discord_webhook_url: str | None = None
     data_dir: Path = Path("data/cache")
     reports_dir: Path = Path("reports/daily")
+    job_detail_cache_ttl_hours: int = 12
+    job_detail_cache_max_entries: int = 500
 
 
 def load_settings() -> Settings:
@@ -61,4 +63,6 @@ def load_settings() -> Settings:
         discord_webhook_url=os.getenv("DISCORD_WEBHOOK_URL") or None,
         data_dir=Path(os.getenv("DATA_DIR", "data/cache")),
         reports_dir=Path(os.getenv("REPORTS_DIR", "reports/daily")),
+        job_detail_cache_ttl_hours=_get_int("JOB_DETAIL_CACHE_TTL_HOURS", 12),
+        job_detail_cache_max_entries=_get_int("JOB_DETAIL_CACHE_MAX_ENTRIES", 500),
     )
