@@ -171,6 +171,8 @@ MCP 클라이언트 설정 예:
         "ZIGHANG_BASE_URL": "https://api.zighang.com/api",
         "RESUME_PATH": "/absolute/path/to/zighang-mcp/resumes/resume.md",
         "PORTFOLIO_PATH": "/absolute/path/to/zighang-mcp/portfolios/portfolio.md",
+        "DATA_DIR": "/absolute/path/to/zighang-mcp/data/cache",
+        "REPORTS_DIR": "/absolute/path/to/zighang-mcp/reports/daily",
         "NOTIFICATION_CHANNELS": "markdown"
       }
     }
@@ -178,7 +180,7 @@ MCP 클라이언트 설정 예:
 }
 ```
 
-운영용 설정에는 상대 경로보다 절대 경로를 권장합니다.
+운영용 설정에는 상대 경로보다 절대 경로를 권장합니다. MCP 클라이언트가 repo root를 working directory로 실행하지 않을 수 있으므로, 이력서/포트폴리오뿐 아니라 `DATA_DIR`와 `REPORTS_DIR`도 절대 경로로 지정하는 편이 안전합니다.
 
 ## Main MCP Tools
 
@@ -253,6 +255,8 @@ cp .env.example .env
 | `REQUEST_DELAY_MS` | `300` | API 요청 간격 |
 | `RESUME_PATH` | `resumes/resume.md` | 기본 이력서 파일 |
 | `PORTFOLIO_PATH` | `portfolios/portfolio.md` | 기본 포트폴리오 파일 |
+| `DATA_DIR` | `data/cache` | 로컬 상태, 캐시, digest snapshot 저장 경로 |
+| `REPORTS_DIR` | `reports/daily` | 일일 digest markdown 저장 경로 |
 | `NOTIFICATION_CHANNELS` | `markdown` | `markdown`, `console`, `webhook`, `email`, `telegram`, `discord` |
 | `WEBHOOK_URL` | empty | webhook digest 수신 URL |
 | `EMAIL_HOST` | empty | SMTP host |
