@@ -9,7 +9,7 @@
 핵심 목표는 단순 검색이 아니라, Agent에게 아래 흐름을 맡길 수 있게 만드는 것입니다.
 
 ```text
-내 조건 설정
+사용자 선호조건 설정
 -> 오늘 맞는 공고 검색/추천
 -> 매일 digest 저장 및 알림
 -> 관심/제외/지원 상태 기록
@@ -22,16 +22,16 @@ MCP 클라이언트나 Agent에서는 자연어로 이렇게 요청하는 것을
 
 | 하고 싶은 일 | 예시 요청 | 주로 쓰는 MCP tool |
 | --- | --- | --- |
-| 내 조건 저장 | "나는 백엔드/데이터 플랫폼, 서울 정규직, 인턴 제외를 원해" | `update_user_preferences_from_text` |
-| 내 조건으로 오늘 공고 보기 | "내 조건으로 오늘 올라온 공고 보여줘" | `search_today_jobs_for_me` |
-| 이력서 기준 추천 | "내 이력 기준으로 맞는 공고 추천해줘" | `recommend_jobs` |
+| 선호조건 저장 | "백엔드/데이터 플랫폼, 서울 정규직, 인턴 제외 조건으로 저장해줘" | `update_user_preferences_from_text` |
+| 선호조건으로 오늘 공고 보기 | "저장된 선호조건으로 오늘 올라온 공고 보여줘" | `search_today_jobs_for_me` |
+| 이력서 기준 추천 | "등록된 이력서 기준으로 맞는 공고 추천해줘" | `recommend_jobs` |
 | 오늘자 리포트 생성 | "직행 오늘자 보고서 만들어줘" | `daily_job_digest_for_me` |
 | 매일 알림용 digest | "저장된 필터 기준으로 daily digest 실행해줘" | `daily_job_digest` |
-| 특정 공고 분석 | "이 공고가 내 이력서와 왜 맞는지 설명해줘" | `explain_job_match` |
+| 특정 공고 분석 | "이 공고가 등록된 이력서와 왜 맞는지 설명해줘" | `explain_job_match` |
 | 공고 상태 기록 | "이 공고는 관심 있음으로 표시해줘" | `track_job_status` |
 | 주간 분석 | "이번 주 공고 흐름 요약해줘" | `get_weekly_job_summary` |
 | 시장 트렌드 | "최근 백엔드 공고 키워드 변화 알려줘" | `get_job_market_trends` |
-| 이력서 보완점 | "최근 공고 기준으로 내 이력서 보완점 알려줘" | `get_resume_gap_analysis` |
+| 이력서 보완점 | "최근 공고 기준으로 이력서 보완점 알려줘" | `get_resume_gap_analysis` |
 
 ## Recommended Workflow
 
@@ -47,8 +47,9 @@ portfolios/portfolio.md
 MCP에서 선호조건을 저장합니다.
 
 ```text
-나는 백엔드, 데이터 플랫폼, 서울/경기 정규직 위주로 보고 싶어.
-Spring Boot, Airflow, Kubernetes 경험을 살리고 싶고 인턴은 제외해줘.
+관심 직무는 백엔드와 데이터 플랫폼이고, 선호 지역은 서울/경기입니다.
+정규직 위주로 보고 싶고, Spring Boot, Airflow, Kubernetes 경험을 활용할 수 있는 공고를 우선해줘.
+인턴 공고는 제외해줘.
 ```
 
 이 요청은 `user_preferences`에 저장되고 이후 검색, 추천, digest에 반영됩니다.
@@ -58,7 +59,7 @@ Spring Boot, Airflow, Kubernetes 경험을 살리고 싶고 인턴은 제외해�
 즉시 확인할 때:
 
 ```text
-내 조건으로 오늘 올라온 공고 중 괜찮은 것만 보여줘.
+저장된 선호조건으로 오늘 올라온 공고 중 괜찮은 것만 보여줘.
 ```
 
 리포트로 남길 때:
@@ -131,7 +132,7 @@ NOTIFICATION_CHANNELS=markdown,telegram
 이번 주 공고 요약해줘.
 최근 공고에서 많이 등장한 기술 키워드 알려줘.
 지난주 대비 늘어난 직무/회사/지역을 알려줘.
-내 이력서 기준으로 반복적으로 부족하게 보이는 부분 알려줘.
+등록된 이력서 기준으로 반복적으로 부족하게 보이는 부분 알려줘.
 ```
 
 이 분석은 markdown을 다시 파싱하지 않고, digest 실행 시 함께 저장되는 구조화 snapshot을 사용합니다.
