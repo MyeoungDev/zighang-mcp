@@ -166,17 +166,13 @@ MCP 클라이언트에는 서버 실행 command만 등록하면 됩니다. 가�
 {
   "mcpServers": {
     "zighang": {
-      "command": "/absolute/path/to/zighang-mcp/.venv/bin/zighang-mcp",
-      "env": {
-        "ZIGHANG_BASE_URL": "https://api.zighang.com/api",
-        "NOTIFICATION_CHANNELS": "markdown"
-      }
+      "command": "/absolute/path/to/zighang-mcp/.venv/bin/zighang-mcp"
     }
   }
 }
 ```
 
-`command`는 MCP 클라이언트가 어디에서 실행되든 서버를 찾을 수 있어야 하므로 절대 경로를 권장합니다. `RESUME_PATH`, `PORTFOLIO_PATH`, `DATA_DIR`, `REPORTS_DIR`는 기본값을 그대로 써도 됩니다.
+`command`는 MCP 클라이언트가 어디에서 실행되든 서버를 찾을 수 있어야 하므로 절대 경로를 권장합니다. `ZIGHANG_BASE_URL`, `RESUME_PATH`, `PORTFOLIO_PATH`, `DATA_DIR`, `REPORTS_DIR`, `NOTIFICATION_CHANNELS`는 기본값을 그대로 써도 됩니다.
 
 MCP 클라이언트가 repo root가 아닌 위치에서 서버를 실행하거나, 이력서/리포트 경로를 명확히 고정하고 싶다면 아래처럼 로컬 데이터 경로도 절대 경로로 지정하세요.
 
