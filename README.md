@@ -72,6 +72,8 @@ MCP에서 선호조건을 저장합니다.
 
 생성된 digest는 기본적으로 아래 파일에 저장됩니다.
 
+개인용 오늘자 digest는 출근길 확인을 고려해 기본 조회 범위가 최근 24시간입니다. 따라서 전날 오후나 저녁에 올라온 공고도 함께 포함될 수 있습니다.
+
 ```text
 reports/daily/YYYY-MM-DD.md
 ```
@@ -213,7 +215,7 @@ MCP 클라이언트가 repo root가 아닌 위치에서 서버를 실행하거�
 
 | Tool | Purpose |
 | --- | --- |
-| `daily_job_digest_for_me` | 저장된 선호조건 기준 오늘자 digest 생성 |
+| `daily_job_digest_for_me` | 저장된 선호조건 기준 최근 24시간 digest 생성 |
 | `daily_job_digest` | 활성 필터 프로필 기준 digest 생성 및 알림 전송 |
 | `get_digest_history` | 최근 일일 digest snapshot 조회 |
 | `get_weekly_job_summary` | 누적 snapshot 기반 주간 요약 |
@@ -242,6 +244,8 @@ MCP 클라이언트가 repo root가 아닌 위치에서 서버를 실행하거�
 ## Digest Output
 
 Digest markdown은 사용자가 바로 판단할 수 있도록 아래 섹션으로 구성됩니다.
+
+`daily_job_digest_for_me`는 기본적으로 오늘 00시 이후만 보지 않고 최근 24시간을 조회합니다. 아침 출근길 리포트에서 전날 오후나 저녁에 올라온 공고가 빠지는 것을 줄이기 위한 기본값입니다. 현재 날짜만 강제로 보고 싶으면 `lookback_hours=0`으로 호출합니다.
 
 - `오늘의 최우선 공고`
 - `새로 발견된 고득점 공고`

@@ -184,6 +184,15 @@ def _posted_date_range(posted_date: str | None = None) -> tuple[str, str, str]:
     return day, f"{day}T00:00:00", f"{day}T23:59:59"
 
 
+def _digest_date_range(lookback_hours: int = 24) -> tuple[str, str, str]:
+    now = datetime.now(ZoneInfo("Asia/Seoul"))
+    if lookback_hours <= 0:
+        day = now.date().isoformat()
+        return day, f"{day}T00:00:00", f"{day}T23:59:59"
+    start = now - timedelta(hours=lookback_hours)
+    return now.date().isoformat(), start.replace(tzinfo=None).isoformat(timespec="seconds"), now.replace(tzinfo=None).isoformat(timespec="seconds")
+
+
 def _filters_from_preferences(preferences: dict[str, Any], size: int | None = None, sort: str | None = "latest") -> dict[str, Any]:
     filters: dict[str, Any] = {
         "job_categories": preferences.get("preferred_job_categories") or None,
@@ -778,17 +787,19 @@ def daily_job_digest_for_me(
     include_pinned: bool = True,
     max_detail_fetch: int | None = None,
     save_report: bool = True,
+    lookback_hours: int = 24,
 ) -> dict[str, Any]:
-    """Generate today's digest from stored user preferences without requiring filter profiles.
+    """Generate a digest from stored user preferences without requiring filter profiles.
 
     Use this as the default for prompts such as "직행 오늘자 보고서" or
-    "내 조건 기준 오늘 올라온 공고 보고서".
+    "내 조건 기준 오늘 올라온 공고 보고서". By default it looks back 24
+    hours so morning reports include postings from the previous afternoon.
     """
     store = _store()
     settings = load_settings()
     state = store.load()
     preferences = store.get_user_preferences()
-    posted_date, start_date, end_date = _posted_date_range()
+    posted_date, start_date, end_date = _digest_date_range(lookback_hours)
     filters = {**_filters_from_preferences(preferences, size=max(limit * 2, limit), sort="latest"), "start_date": start_date, "end_date": end_date}
     seen = set(state.get("seen_jobs", {}).keys()) if exclude_seen else set()
     tracked = set(state.get("job_statuses", {}).keys()) if not include_tracked else set()
@@ -856,6 +867,7 @@ def daily_job_digest_for_me(
         "notification_result": notification_result,
         "setup_required": False,
         "posted_date": posted_date,
+        "lookback_hours": lookback_hours,
         "preferences": preferences,
         "applied_filters": filters,
         "recommendation_meta": {

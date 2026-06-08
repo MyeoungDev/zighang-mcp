@@ -61,7 +61,7 @@ class DailyDigestNotificationTests(unittest.TestCase):
 
             with (
                 patch("src.mcp.tools.jobs.load_settings", return_value=settings),
-                patch("src.mcp.tools.jobs._posted_date_range", return_value=("2026-06-02", "2026-06-02T00:00:00", "2026-06-02T23:59:59")),
+                patch("src.mcp.tools.jobs._digest_date_range", return_value=("2026-06-02", "2026-06-01T10:00:00", "2026-06-02T10:00:00")) as range_mock,
                 patch("src.mcp.tools.jobs.search_pinned_jobs", return_value={"jobs": []}),
                 patch("src.mcp.tools.jobs.recommend_jobs", return_value={"recommendations": [recommendation]}) as recommend_mock,
             ):
@@ -69,15 +69,17 @@ class DailyDigestNotificationTests(unittest.TestCase):
 
             self.assertFalse(result["setup_required"])
             self.assertEqual(result["posted_date"], "2026-06-02")
+            self.assertEqual(result["lookback_hours"], 24)
             self.assertIn("Backend Engineer", result["markdown"])
             self.assertTrue(Path(result["report_path"]).exists())
+            range_mock.assert_called_once_with(24)
             filters = recommend_mock.call_args.kwargs["inline_filter"]
             self.assertEqual(filters["job_categories"], ["IT_개발"])
             self.assertEqual(filters["job_subcategories"], ["서버_백엔드"])
             self.assertEqual(filters["regions"], ["서울"])
             self.assertEqual(filters["employment_types"], ["정규직"])
-            self.assertEqual(filters["start_date"], "2026-06-02T00:00:00")
-            self.assertEqual(filters["end_date"], "2026-06-02T23:59:59")
+            self.assertEqual(filters["start_date"], "2026-06-01T10:00:00")
+            self.assertEqual(filters["end_date"], "2026-06-02T10:00:00")
             self.assertIn("프론트엔드", filters["exclude_keywords"])
 
     def test_daily_job_digest_sends_webhook_after_saving_report(self):

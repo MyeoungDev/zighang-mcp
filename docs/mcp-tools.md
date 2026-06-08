@@ -236,7 +236,9 @@ Digest markdown is organized into decision sections: top priority, newly found h
 
 ### `daily_job_digest_for_me`
 
-Generates today's digest directly from stored `user_preferences`, without requiring enabled filter profiles. This is the preferred tool for interactive prompts such as "직행 오늘자 보고서" or "내 조건 기준 오늘 올라온 공고 보고서".
+Generates a personal digest directly from stored `user_preferences`, without requiring enabled filter profiles. This is the preferred tool for interactive prompts such as "직행 오늘자 보고서" or "내 조건 기준 오늘 올라온 공고 보고서".
+
+By default, the digest searches the last 24 hours rather than only the current calendar day. This makes morning commute reports include postings from the previous afternoon or evening. Set `lookback_hours=0` to force the old current-day-only range.
 
 Inputs:
 
@@ -250,8 +252,9 @@ Inputs:
 - `include_pinned`
 - `max_detail_fetch`
 - `save_report`
+- `lookback_hours`: defaults to `24`. Values `<=0` use today's `00:00:00` through `23:59:59` in Asia/Seoul.
 
-Output matches `daily_job_digest` and additionally includes `posted_date`, `preferences`, `applied_filters`, and `recommendation_meta`.
+Output matches `daily_job_digest` and additionally includes `posted_date`, `lookback_hours`, `preferences`, `applied_filters`, and `recommendation_meta`.
 
 ### Digest Analytics Tools
 
